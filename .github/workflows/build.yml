@@ -1,3 +1,8 @@
+name: build
+
+on:
+  workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -6,13 +11,16 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: microsoft/setup-msbuild@v2
 
-      - name: Build
+      - name: Build DLL
         run: msbuild fusion-plus.sln /p:Configuration=Release /p:Platform=x64
 
       - name: Hash SHA256
-        run: Get-FileHash fusion-plus/build/*.dll -Algorithm SHA256 | Format-Table Hash, Path -AutoSize
+        shell: pwsh
+        run: |
+          Get-FileHash fusion-plus/build/*.dll -Algorithm SHA256 | Format-Table Hash, Path -AutoSize
 
       - uses: actions/upload-artifact@v4
         with:
