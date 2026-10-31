@@ -1,29 +1,36 @@
-name: build
+name: Build Fusion+ DLL
 
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout del código
+        uses: actions/checkout@v4
 
-      - uses: microsoft/setup-msbuild@v2
+      - name: Configurar MSBuild
+        uses: microsoft/setup-msbuild@v2
 
-      - name: Build DLL
-        run: msbuild fusion-plus.sln /p:Configuration=Release /p:Platform=x64
+      - name: Configurar entorno MSVC (x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
-      - name: Hash SHA256
+      # 👇 Compilamos el .vcxproj directamente, NO la .sln
+      - name: Compilar el proyecto DLL en Release x64
+        run: msbuild fusion-plus\fusion-plus.vcxproj /p:Configuration=Release /p:Platform=x64
+
+      - name: Localizar el DLL generado
         shell: pwsh
         run: |
-          Get-FileHash fusion-plus/build/*.dll -Algorithm SHA256 | Format-Table Hash, Path -AutoSize
+          Get-ChildItem -Path . -Filter *.dll -Recurse | Select-Object FullName
 
-      - uses: actions/upload-artifact@v4
+      - name: Subir el artefacto (DLL)
+        uses: actions/upload-artifact@v4
         with:
-          name: fusion-plus-build
-          path: fusion-plus/build/*.dll
+          name: fusion-plus-dll
+          path: "**/*.dll"
           if-no-files-found: error
