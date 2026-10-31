@@ -1,0 +1,21 @@
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Build
+        run: msbuild fusion-plus.sln /p:Configuration=Release /p:Platform=x64
+
+      - name: Hash SHA256
+        run: Get-FileHash fusion-plus/build/*.dll -Algorithm SHA256 | Format-Table Hash, Path -AutoSize
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fusion-plus-build
+          path: fusion-plus/build/*.dll
+          if-no-files-found: error
