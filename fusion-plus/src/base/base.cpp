@@ -80,8 +80,6 @@ void Base::Init()
 	g_ModuleManager = std::make_unique<ModuleManager>();
 	g_ModuleManager->Init();
 
-	MinecraftItems::Init();
-
 	Base::Running = true;
 
 	while (Base::Running)
