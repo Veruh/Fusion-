@@ -15,8 +15,6 @@
 #include <thread>
 #include <unordered_map>
 #include <sdk/net/minecraft/client/ClientBrandRetriever.h>
-#include <java/hotspot/hotspot.h>
-#include <java/javahook.h>
 
 static bool IsKeyReleased(int key)
 {
