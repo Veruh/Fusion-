@@ -98,7 +98,6 @@ void Base::Kill()
 	if (Borderless::Enabled)
 		Borderless::Restore(Menu::HandleWindow);
 
-	JavaHook::clean();
 	StrayCache::DeleteRefs();
 	Java::Kill();
 	Menu::Kill();
