@@ -75,17 +75,6 @@ void Base::Init()
 
 	SDK::Init();
 
-	if (!HotSpot::init())
-	{
-		Logger::Log("Failed to initialize HotSpot");
-		MessageBoxA(NULL, "Failed to initialize HotSpot", "fusion+", MB_OK | MB_ICONERROR);
-		Logger::Kill();
-		MH_Uninitialize();
-		Java::Kill();
-		FreeLibraryAndExitThread(Main::HModule, 0);
-		return;
-	}
-
 	Menu::Init();
 
 	g_ModuleManager = std::make_unique<ModuleManager>();
