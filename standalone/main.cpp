@@ -20,6 +20,46 @@ std::filesystem::path profileRoot;
 std::string notice;
 std::string selected;
 bool open=true,running=true;
+bool saveAppearanceOnExit=true;
+
+// Remove only this application's known files; never recurse into directories.
+std::vector<std::filesystem::path> LocalDataFiles() {
+    const auto root=profileRoot.parent_path().lexically_normal();
+    PWSTR local=nullptr;
+    if(FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData,0,nullptr,&local))) throw std::runtime_error("Cannot verify local data folder.");
+    const auto expected=(std::filesystem::path(local)/"FusionStudio").lexically_normal();CoTaskMemFree(local);
+    if(root!=expected || profileRoot.lexically_normal()!=expected/"profiles") throw std::runtime_error("Unexpected data folder. Nothing was deleted.");
+    for(const auto& path:{root,profileRoot}) {
+        const DWORD attrs=GetFileAttributesW(path.c_str());
+        if(attrs!=INVALID_FILE_ATTRIBUTES && (attrs&FILE_ATTRIBUTE_REPARSE_POINT)) throw std::runtime_error("Linked data folders are not supported. Nothing was deleted.");
+    }
+    std::vector<std::filesystem::path> files;
+    auto add=[&](const std::filesystem::path& path) {
+        const DWORD attrs=GetFileAttributesW(path.c_str());
+        if(attrs==INVALID_FILE_ATTRIBUTES) return;
+        if((attrs&FILE_ATTRIBUTE_REPARSE_POINT) || (attrs&FILE_ATTRIBUTE_DIRECTORY)) throw std::runtime_error("Unexpected linked file or directory. Nothing was deleted.");
+        files.push_back(path);
+    };
+    add(root/"appearance.json");
+    if(std::filesystem::exists(profileRoot)) for(const auto& entry:std::filesystem::directory_iterator(profileRoot)) {
+        const auto stem=entry.path().stem().string();
+        if(entry.path().extension()==".json" && stem.rfind("profile-",0)==0 && StudioProfiles::ValidName(stem.substr(8))) add(entry.path());
+    }
+    return files;
+}
+void DeleteLocalData() {
+    const auto files=LocalDataFiles(); // Validate the complete list before the first deletion.
+    saveAppearanceOnExit=false;
+    size_t failures=0;
+    for(const auto& path:files) {std::error_code ec;std::filesystem::remove(path,ec);if(ec) ++failures;}
+    // Empty directories only. Unknown files are preserved.
+    for(const auto& path:{profileRoot,profileRoot.parent_path()}) {
+        std::error_code ec;
+        if(std::filesystem::is_directory(path,ec) && std::filesystem::is_empty(path,ec)) std::filesystem::remove(path,ec);
+    }
+    if(failures) MessageBoxW(nullptr,L"Some app files could not be deleted. The app will close without saving settings. The EXE was not changed.",L"Cleanup incomplete",MB_ICONWARNING);
+    running=false;open=false;
+}
 
 // Commit a complete JSON file in the same directory without truncating the old one.
 void WriteJson(const std::filesystem::path& path,const nlohmann::json& data) {
@@ -140,6 +180,22 @@ void Preferences() {
     }
     if(remove>=0) settings::friends.erase(settings::friends.begin()+remove);
     ImGui::TextWrapped("Save a profile to persist the list. Profiles are stored in LocalAppData/FusionStudio/profiles.");
+    FusionGui::Section("LOCAL DATA");
+    ImGui::TextWrapped("Delete this preview's saved profiles and appearance, then close it. Keeps the EXE and any unrelated files.");
+    ImGui::PushStyleColor(ImGuiCol_Text,ImVec4(.96f,.45f,.49f,1));
+    if(ImGui::Button("Delete local data and exit",ImVec2(-1,34))) ImGui::OpenPopup("Delete local data?");
+    ImGui::PopStyleColor();
+    if(ImGui::BeginPopupModal("Delete local data?",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Permanently delete saved preview profiles and appearance?");
+        ImGui::TextUnformatted("Keeps FusionStudio.exe. Windows and antivirus records are unchanged.");
+        ImGui::Spacing();
+        if(ImGui::Button("Delete and exit")) {
+            try {DeleteLocalData();ImGui::CloseCurrentPopup();}
+            catch(const std::exception& e) {notice=e.what();ImGui::CloseCurrentPopup();}
+        }
+        ImGui::SameLine();if(ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
 }
 void Check(bool condition,const char* what) { if(!condition) throw std::runtime_error(what); }
 void EmptyPanel() { ImGui::TextUnformatted("Test panel"); }
@@ -162,6 +218,11 @@ int SelfTest() {
     WriteJson(testFile,original);WriteJson(testFile,saved);
     {std::ifstream input(testFile);nlohmann::json actual;input>>actual;Check(actual==saved,"Atomic profile replacement failed");}
     Check(std::filesystem::remove(testFile),"Could not remove self-test file");
+    const auto previousRoot=profileRoot;
+    profileRoot=std::filesystem::temp_directory_path()/"NotFusionStudio"/"profiles";
+    rejected=false;try {DeleteLocalData();}catch(const std::exception&) {rejected=true;}
+    Check(rejected && running && saveAppearanceOnExit,"Cleanup accepted an unrelated folder");
+    profileRoot=previousRoot;
     StudioProfiles::Decode(original);
     ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
     io.Fonts->AddFontDefault();io.Fonts->Build();io.DeltaTime=1.f/60;
@@ -246,7 +307,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int) {
         ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());SwapBuffers(dc);
         Sleep(16);
     }
-    try {SaveAppearance();}catch(const std::exception& e) {MessageBoxA(hwnd,e.what(),"Could not save appearance",MB_ICONWARNING);}
+    if(saveAppearanceOnExit) try {SaveAppearance();}catch(const std::exception& e) {MessageBoxA(hwnd,e.what(),"Could not save appearance",MB_ICONWARNING);}
     ImGui_ImplOpenGL2_Shutdown();ImGui_ImplWin32_Shutdown();ImGui::DestroyContext();
     wglMakeCurrent(nullptr,nullptr);wglDeleteContext(gl);ReleaseDC(hwnd,dc);DestroyWindow(hwnd);UnregisterClassW(wc.lpszClassName,instance);
     return 0;
