@@ -188,8 +188,17 @@ inline bool Nav(const char* label,int index) {
     const float hover=Animate("##hover",ImGui::IsItemHovered()?1.f:0.f,.15f);
     const float selected=Animate("##selected",active?1.f:0.f,.23f);
     auto* d=ImGui::GetWindowDrawList();
-    d->AddRectFilled(p,ImVec2(p.x+w,p.y+42),Color(Mix(Palette::Main,Palette::Interactive,.3f*hover+.32f*selected)),4);
-    const auto ink=Color(Mix(Palette::Secondary,Accent(),selected));
+    const ImVec2 end(p.x+w,p.y+42);
+    d->AddRectFilled(p,end,Color(Mix(Palette::Main,Palette::Rgb(0x073D2C),.18f*hover+.87f*selected)),7);
+    if(selected>.01f) {
+        for(int glow=3;glow>=1;--glow)
+            d->AddRect(ImVec2(p.x-glow,p.y-glow),ImVec2(end.x+glow,end.y+glow),
+                Color(Palette::Rgb(0x00E99A,.035f*selected)),8);
+        d->AddRect(p,end,Color(Palette::Rgb(0x00E99A,.62f*selected)),7,0,1.2f);
+        d->AddRectFilled(ImVec2(p.x,p.y+7),ImVec2(p.x+3,p.y+35),
+            Color(Palette::Rgb(0x00E99A,selected)),2);
+    }
+    const auto ink=Color(Mix(Palette::Secondary,Palette::Rgb(0x00E99A),selected));
     Icon(d,ImVec2(p.x+18,p.y+21),index,ink);
     d->AddText(ImVec2(p.x+40,p.y+12),Color(Mix(Palette::Secondary,Palette::Text,selected)),label);
     const float arrow=p.x+w-15;
@@ -216,11 +225,23 @@ inline void ModuleCard(int index,ImVec2 size) {
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha,ImGui::GetStyle().Alpha*(.5f+.5f*reveal));
     const auto cardOrigin=ImGui::GetCursorScreenPos();
     ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cardOrigin.x,cardOrigin.y+3),ImVec2(cardOrigin.x+size.x,cardOrigin.y+size.y+3),Color(Palette::Rgb(0x000000,.14f)),6);
-    ImGui::PushStyleColor(ImGuiCol_ChildBg,Palette::Elevated);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg,Palette::Rgb(0x121A17));
     ImGui::PushStyleColor(ImGuiCol_Border,Mix(Palette::Rgb(0x2B282D,.6f),ImVec4(a.x,a.y,a.z,.26f),on));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(0,0));
     ImGui::BeginChild("##card",size,true,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);
     const auto p=ImGui::GetWindowPos();auto* d=ImGui::GetWindowDrawList();
+    const float glow=on;
+    if(glow>.01f) {
+        d->AddRectFilledMultiColor(ImVec2(p.x+size.x*.58f,p.y+size.y*.55f),
+            ImVec2(p.x+size.x-2,p.y+size.y-2),
+            Color(Palette::Rgb(0x063B2B,0)),Color(Palette::Rgb(0x0C6745,.12f*glow)),
+            Color(Palette::Rgb(0x0C6745,.22f*glow)),Color(Palette::Rgb(0x063B2B,0)));
+        for(int layer=3;layer>=1;--layer)
+            d->AddRect(ImVec2(p.x+layer,p.y+layer),ImVec2(p.x+size.x-layer,p.y+size.y-layer),
+                Color(Palette::Rgb(0x00E99A,.055f*glow)),7);
+        d->AddRect(ImVec2(p.x+1,p.y+1),ImVec2(p.x+size.x-1,p.y+size.y-1),
+            Color(Palette::Rgb(0x00E99A,.64f*glow)),7,0,1.2f);
+    }
     Icon(d,ImVec2(p.x+24,p.y+25),index,Color(Mix(Palette::Secondary,a,on*.8f)));
     ImGui::SetCursorPos(ImVec2(size.x-49,16));
     if(ImGui::InvisibleButton("##enabled",ImVec2(33,18))) *enabled=!*enabled;
@@ -233,16 +254,17 @@ inline void ModuleCard(int index,ImVec2 size) {
     if(hover>.01f) d->AddRect(ImVec2(p.x+1,p.y+1),ImVec2(p.x+size.x-1,p.y+size.y-1),Color(Palette::Rgb(0xFFFFFF,.07f*hover)),6);
     if(ImGui::IsItemHovered()) ImGui::SetTooltip("Open %s settings",ModuleName(index));
     ImFont* font=HeadingFont?HeadingFont:ImGui::GetFont();
-    d->AddText(font,17,ImVec2(p.x+16,p.y+52),Color(Palette::Text),ModuleName(index));
-    const char* descriptions[]={"Targeting and precision","Player display and colors","Jump reset controls"};
+    const char* displayNames[]={"Asistencia de apuntado","ESP","Velocidad"};
+    d->AddText(font,17,ImVec2(p.x+16,p.y+52),Color(Palette::Text),displayNames[index]);
+    const char* descriptions[]={"Precision y seguimiento del objetivo","Visualizacion de jugadores y colores","Controles de reinicio de salto"};
     d->AddText(ImVec2(p.x+16,p.y+79),Color(Palette::Secondary),descriptions[index]);
     ImGui::SetCursorPos(ImVec2(16,size.y-30));
     ImGui::PushStyleColor(ImGuiCol_Button,ImVec4(0,0,0,0));
     ImGui::PushStyleColor(ImGuiCol_Text,Favorites[index]?a:Palette::Muted);
-    if(ImGui::SmallButton(Favorites[index]?"Favorited":"+ Favorite")) Favorites[index]=!Favorites[index];
+    if(ImGui::SmallButton(Favorites[index]?"* Favorito":"* Favorito")) Favorites[index]=!Favorites[index];
     ImGui::PopStyleColor(2);
     d->AddCircleFilled(ImVec2(p.x+size.x-49,p.y+size.y-20),2.5f,Color(Mix(Palette::Muted,a,on)),12);
-    d->AddText(ImVec2(p.x+size.x-40,p.y+size.y-27),Color(Mix(Palette::Muted,a,on)),*enabled?"On":"Off");
+    d->AddText(ImVec2(p.x+size.x-40,p.y+size.y-27),Color(Mix(Palette::Muted,a,on)),*enabled?"Activado":"Desactivado");
     ImGui::EndChild();ImGui::PopStyleVar();ImGui::PopStyleColor(2);ImGui::PopStyleVar();ImGui::PopID();
 }
 inline void Dashboard() {
@@ -255,7 +277,12 @@ inline void Dashboard() {
         if(ImGui::InvisibleButton("##tab",ImVec2(w,34))) {ModuleFilter=i;FilterStart=ImGui::GetTime();}
         const float hover=Animate("##tab-hover",ImGui::IsItemHovered()?1.f:0.f,.14f);
         auto* draw=ImGui::GetWindowDrawList();
-        if(hover>.01f) draw->AddRectFilled(p,ImVec2(p.x+w,p.y+30),Color(Palette::Rgb(0xFFFFFF,.025f*hover)),4);
+        const float selected=Animate("##filter-selected",ModuleFilter==i?1.f:0.f,.18f);
+        if(selected>.01f) {
+            draw->AddRectFilled(p,ImVec2(p.x+w,p.y+31),Color(Palette::Rgb(0x07573B,.85f*selected)),7);
+            draw->AddRect(p,ImVec2(p.x+w,p.y+31),Color(Palette::Rgb(0x00E99A,.7f*selected)),7);
+        } else if(hover>.01f)
+            draw->AddRectFilled(p,ImVec2(p.x+w,p.y+31),Color(Palette::Rgb(0xFFFFFF,.045f*hover)),7);
         draw->AddText(ImVec2(p.x+10,p.y+7),Color(ModuleFilter==i?Palette::Text:Palette::Secondary),filters[i]);
         if(ModuleFilter==i) {activeLeft=p.x+10;activeRight=p.x+w-10;}
         ImGui::PopID();
@@ -279,10 +306,10 @@ inline void Dashboard() {
         ModuleCard(i,ImVec2(cardWidth,182));++count;
     }
     if(!count) {
-        ImGui::Spacing();ImGui::TextDisabled("No modules match this view.");
-        if(ModuleFilter==1) ImGui::TextWrapped("Add a module to Favorites from the All tab.");
+        ImGui::Spacing();ImGui::TextDisabled("No hay modulos para este filtro.");
+        if(ModuleFilter==1) ImGui::TextWrapped("Marca un modulo como favorito desde Todos.");
     }
-    ImGui::Spacing();ImGui::TextDisabled("Open a card to configure. Local preview only.");
+    ImGui::Spacing();ImGui::TextDisabled("Vista previa local. Los controles solo modifican valores de demostracion.");
 }
 inline void Startup(float completed,const char* status,float alpha=1) {
     Theme();auto* d=ImGui::GetBackgroundDrawList();const auto display=ImGui::GetIO().DisplaySize;
@@ -367,6 +394,11 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     d->AddRectFilled(ImVec2(o.x+1,o.y+1),ImVec2(o.x+sidebar,o.y+height-1),Color(Palette::Main),9,ImDrawFlags_RoundCornersLeft);
     d->AddLine(ImVec2(o.x+sidebar,o.y+1),ImVec2(o.x+sidebar,o.y+height-1),Color(Palette::Border));
     d->AddLine(ImVec2(o.x+1,o.y+65),ImVec2(o.x+width-1,o.y+65),Color(Palette::Border));
+    // Subtle ambient planes, deliberately behind the interactive content.
+    d->AddRectFilledMultiColor(ImVec2(o.x+sidebar+1,o.y+66),
+        ImVec2(o.x+width-2,o.y+height-2),
+        Color(Palette::Rgb(0x071C15,.20f)),Color(Palette::Rgb(0x08120F,.06f)),
+        Color(Palette::Rgb(0x0B2B20,.16f)),Color(Palette::Rgb(0x08120F,.02f)));
     ImFont* brand=BrandFont?BrandFont:ImGui::GetFont();
     DrawBrand(d,brand,ImVec2(o.x+24,o.y+18),24,Color(Palette::Text),.7f);
     const ImVec2 studioMin(o.x+174,o.y+21),studioMax(o.x+235,o.y+49);
@@ -387,8 +419,8 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     const auto navOrigin=ImGui::GetWindowPos();
     ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(navOrigin.x,navOrigin.y+IndicatorY),ImVec2(navOrigin.x+2,navOrigin.y+IndicatorY+18),Color(Accent()),1);
     ImGui::SetCursorPosY((std::max)(ImGui::GetCursorPosY()+16,height-194));
-    ImGui::Separator();ImGui::TextDisabled("%s",standalone?"Preview only":"INSERT / menu");
-    if(ImGui::Button(standalone?"Close preview":"Detach",ImVec2(-1,30))) {
+    ImGui::Separator();ImGui::TextColored(Palette::Rgb(0x00E99A),"* Fusion v2.1.0");
+    if(ImGui::Button(standalone?"Cerrar vista previa":"Cerrar",ImVec2(-1,30))) {
         if(standalone) {*running=false;*open=false;}else ImGui::OpenPopup("Detach Fusion?");
     }
     if(ImGui::BeginPopupModal("Detach Fusion?",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
