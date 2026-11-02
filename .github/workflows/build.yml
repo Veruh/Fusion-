@@ -3,13 +3,23 @@ name: Build Fusion+ DLL
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: fusion-plus-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-2022
+    timeout-minutes: 20
 
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Configurar MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -19,18 +29,23 @@ jobs:
         with:
           arch: x64
 
-      # 👇 Compilamos el .vcxproj directamente, NO la .sln
       - name: Compilar el proyecto DLL en Release x64
-        run: msbuild fusion-plus\fusion-plus.vcxproj /p:Configuration=Release /p:Platform=x64
+        run: msbuild fusion-plus\fusion-plus.vcxproj /m /p:Configuration=Release /p:Platform=x64
 
-      - name: Localizar el DLL generado
+      - name: Verificar el artefacto generado
         shell: pwsh
         run: |
-          Get-ChildItem -Path . -Filter *.dll -Recurse | Select-Object FullName
+          $dll = Get-Item -LiteralPath "fusion-plus\build\fusion-plus.dll" -ErrorAction SilentlyContinue
+          if (-not $dll) {
+            Get-ChildItem -Path "fusion-plus\build" -Filter *.dll -ErrorAction SilentlyContinue | Format-Table FullName
+            throw "No se encontró fusion-plus.dll en fusion-plus/build. Revisa TargetName y OutDir del proyecto."
+          }
+          Get-FileHash -LiteralPath $dll.FullName -Algorithm SHA256 | Format-List
 
-      - name: Subir el artefacto (DLL)
+      - name: Subir únicamente la DLL compilada
         uses: actions/upload-artifact@v4
         with:
-          name: fusion-plus-dll
-          path: "**/*.dll"
+          name: fusion-plus-dll-windows-x64
+          path: fusion-plus/build/fusion-plus.dll
           if-no-files-found: error
+          retention-days: 7
