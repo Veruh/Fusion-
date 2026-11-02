@@ -13,6 +13,7 @@
 #include "imgui/imgui_impl_opengl2.h"
 #include "menu/fusionGui.h"
 #include "profiles.h"
+#include "previewCapture.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND,UINT,WPARAM,LPARAM);
 namespace {
@@ -76,7 +77,7 @@ void WriteJson(const std::filesystem::path& path,const nlohmann::json& data) {
 }
 void SaveAppearance() {
     nlohmann::json look;
-    look["accent"]=settings::Menu_AccentColor;look["preview"]=FusionGui::ShowPreview;
+    look["accent"]=settings::Menu_AccentColor;look["preview"]=FusionGui::ShowPreview;look["favorites"]=FusionGui::Favorites;
     WriteJson(profileRoot.parent_path()/"appearance.json",look);
 }
 void LoadAppearance() {
@@ -91,7 +92,14 @@ void LoadAppearance() {
     auto values=color.get<std::array<float,4>>();
     for(float v:values) if(!std::isfinite(v)||v<0||v>1) throw std::runtime_error("Invalid accent color.");
     const bool preview=look.at("preview").get<bool>();
+    std::array<bool,3> favorites{};
+    if(look.contains("favorites")) {
+        const auto& list=look.at("favorites");
+        if(!list.is_array() || list.size()!=3) throw std::runtime_error("Invalid favorites list.");
+        favorites=list.get<std::array<bool,3>>();
+    }
     std::copy(values.begin(),values.end(),settings::Menu_AccentColor);FusionGui::ShowPreview=preview;
+    std::copy(favorites.begin(),favorites.end(),FusionGui::Favorites);
 }
 
 void Refresh(std::vector<std::string>& files) {
@@ -199,6 +207,22 @@ void Preferences() {
 }
 void Check(bool condition,const char* what) { if(!condition) throw std::runtime_error(what); }
 void EmptyPanel() { ImGui::TextUnformatted("Test panel"); }
+void LoadFonts() {
+    auto& io=ImGui::GetIO();
+    ImFontConfig config{};config.SizePixels=16;
+    ImFont* fallback=io.Fonts->AddFontDefault(&config);
+    wchar_t windowsFolder[MAX_PATH]{};
+    if(GetWindowsDirectoryW(windowsFolder,MAX_PATH)) {
+        const auto fonts=std::filesystem::path(windowsFolder)/"Fonts";
+        const auto regular=fonts/"segoeui.ttf",semibold=fonts/"seguisb.ttf";
+        if(std::filesystem::exists(regular)) io.FontDefault=io.Fonts->AddFontFromFileTTF(regular.string().c_str(),17);
+        if(std::filesystem::exists(semibold)) {
+            FusionGui::HeadingFont=io.Fonts->AddFontFromFileTTF(semibold.string().c_str(),22);
+            FusionGui::BrandFont=io.Fonts->AddFontFromFileTTF(semibold.string().c_str(),25);
+        }
+    }
+    if(!io.FontDefault) io.FontDefault=fallback;
+}
 int SelfTest() {
     const auto original=StudioProfiles::Encode();
     Check(!StudioProfiles::ValidName("../escape"),"Path traversal accepted");
@@ -225,10 +249,10 @@ int SelfTest() {
     profileRoot=previousRoot;
     StudioProfiles::Decode(original);
     ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
-    io.Fonts->AddFontDefault();io.Fonts->Build();io.DeltaTime=1.f/60;
+    LoadFonts();io.Fonts->Build();io.DeltaTime=1.f/60;settings::AA_Enabled=true;settings::ESP_Enabled=true;
     for(auto size:{ImVec2(1280,800),ImVec2(854,480),ImVec2(720,1280)}) {
         io.DisplaySize=size;
-        for(int page=0;page<5;page++) {
+        for(int page=0;page<6;page++) {
             FusionGui::page=page;
             for(int frame=0;frame<2;frame++) {
                 ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);ImGui::Render();
@@ -236,6 +260,7 @@ int SelfTest() {
                 Check(window && window->Pos.x>=0 && window->Pos.y>=0,"Window outside viewport");
                 Check(window->Pos.x+window->Size.x<=size.x && window->Pos.y+window->Size.y<=size.y,"Window clipped by viewport");
                 Check(ImGui::GetDrawData()->TotalVtxCount>0,"UI did not draw");
+                if(size.x==1280 && page==5 && frame==1) StudioCapture::SaveFrame("gui-preview.ppm",1280,800);
             }
         }
     }
@@ -248,7 +273,15 @@ int SelfTest() {
         ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);ImGui::Render();
     }
     Check(settings::AA_Enabled,"Toggle interaction failed");
-    ImGui::DestroyContext();std::puts("PASS: profiles, atomic validation, 15 UI layouts and switch interaction.");return 0;
+    FusionGui::ModuleFilter=1;
+    Check(!FusionGui::ModuleVisible(0) && !FusionGui::ModuleVisible(1),"Empty favorites filter failed");
+    FusionGui::Favorites[1]=true;
+    Check(FusionGui::ModuleVisible(1) && !FusionGui::ModuleVisible(0),"Favorites filter failed");
+    FusionGui::ModuleFilter=0;
+    std::snprintf(FusionGui::Search,sizeof(FusionGui::Search),"aIM");
+    Check(FusionGui::ModuleVisible(0) && !FusionGui::ModuleVisible(1),"Case-insensitive search failed");
+    FusionGui::Search[0]=0;
+    ImGui::DestroyContext();std::puts("PASS: profiles, local cleanup boundaries, 18 layouts, filters, search and switch interaction.");return 0;
 }
 LRESULT WINAPI WindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l) {
     if(ImGui::GetCurrentContext() && ImGui_ImplWin32_WndProcHandler(hwnd,msg,w,l)) return 1;
@@ -283,19 +316,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int) {
         if(gl) wglDeleteContext(gl);ReleaseDC(hwnd,dc);DestroyWindow(hwnd);UnregisterClassW(wc.lpszClassName,instance);return 1;
     }
     ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
-    ImFontConfig config{};config.SizePixels=16;
-    ImFont* fallback=io.Fonts->AddFontDefault(&config);
-    wchar_t windowsFolder[MAX_PATH]{};
-    if(GetWindowsDirectoryW(windowsFolder,MAX_PATH)) {
-        const auto fonts=std::filesystem::path(windowsFolder)/"Fonts";
-        const auto regular=fonts/"segoeui.ttf",semibold=fonts/"seguisb.ttf";
-        if(std::filesystem::exists(regular)) io.FontDefault=io.Fonts->AddFontFromFileTTF(regular.string().c_str(),17);
-        if(std::filesystem::exists(semibold)) {
-            FusionGui::HeadingFont=io.Fonts->AddFontFromFileTTF(semibold.string().c_str(),22);
-            FusionGui::BrandFont=io.Fonts->AddFontFromFileTTF(semibold.string().c_str(),25);
-        }
-    }
-    if(!io.FontDefault) io.FontDefault=fallback;
+    LoadFonts();
     ImGui_ImplWin32_Init(hwnd);ImGui_ImplOpenGL2_Init();ShowWindow(hwnd,SW_SHOWDEFAULT);
     while(running && open) {
         MSG msg;while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)) {TranslateMessage(&msg);DispatchMessageW(&msg);if(msg.message==WM_QUIT) running=false;}

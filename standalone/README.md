@@ -12,6 +12,8 @@ Aplicación independiente de Windows para revisar la GUI sin cargar código en M
 - Tema carbón compacto, tipografía Segoe UI/Segoe UI Semibold de Windows (con fuente de respaldo), iconos vectoriales y switches animados.
 - Appearance ofrece cinco acentos y un color personalizado con entrada hexadecimal; se guarda en `appearance.json` al salir o pulsar Save appearance.
 - La ilustración es opcional y aparece solo en ventanas suficientemente anchas.
+- Modules es la página inicial: tarjetas de Aim Assist, ESP y Velocity con switch, estado y acceso a ajustes. Las tarjetas activas usan el acento elegido.
+- Filtros All/Favorites/Combat/Render/Movement y búsqueda por nombre. Los favoritos se conservan en appearance.json y también se eliminan con la limpieza local.
 - Appearance incluye Delete local data and exit, con confirmación: borra los perfiles de nombre válido y appearance.json de esta app, conserva el EXE y cierra sin volver a guardar. No recorre subdirectorios ni borra archivos ajenos; rechaza carpetas enlazadas y elimina las carpetas propias solo si quedan vacías. No limpia registros de Windows, historial antivirus ni archivos fuera de su directorio de datos. No es una herramienta de eliminación de malware.
 - El guardado reemplaza el archivo mediante un temporal completo, sin truncar primero el perfil anterior. Las listas de color deben tener exactamente cuatro componentes.
 

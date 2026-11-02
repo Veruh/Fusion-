@@ -2,10 +2,14 @@
 #include "imgui/imgui.h"
 #include "configManager/settings.h"
 #include <algorithm>
+#include <cctype>
 
 // Shared by the injected menu and the standalone, non-injecting visual preview.
 namespace FusionGui {
-inline int page = 0;
+inline int page = 5;
+inline bool Favorites[3]={false,false,false};
+inline int ModuleFilter=0;
+inline char Search[64]="";
 inline ImFont* HeadingFont=nullptr;
 inline ImFont* BrandFont=nullptr;
 inline bool ShowPreview=false;
@@ -22,8 +26,8 @@ inline void Theme() {
     auto* c = s.Colors;
     c[ImGuiCol_Text] = ImVec4(.88f,.89f,.90f,1);
     c[ImGuiCol_TextDisabled] = ImVec4(.47f,.49f,.50f,1);
-    c[ImGuiCol_WindowBg] = ImVec4(.065f,.069f,.073f,1);
-    c[ImGuiCol_ChildBg] = ImVec4(.083f,.087f,.091f,1);
+    c[ImGuiCol_WindowBg] = ImVec4(.055f,.052f,.062f,1);
+    c[ImGuiCol_ChildBg] = ImVec4(.068f,.064f,.076f,1);
     c[ImGuiCol_PopupBg] = ImVec4(.095f,.10f,.105f,1);
     c[ImGuiCol_Border] = ImVec4(.17f,.18f,.19f,.8f);
     c[ImGuiCol_FrameBg] = ImVec4(.125f,.133f,.14f,1);
@@ -40,6 +44,9 @@ inline void Theme() {
     c[ImGuiCol_ScrollbarBg] = ImVec4(0,0,0,0);
     c[ImGuiCol_ScrollbarGrab] = ImVec4(.25f,.27f,.28f,1);
     c[ImGuiCol_NavHighlight] = Accent();
+    c[ImGuiCol_Tab]=ImVec4(.085f,.08f,.095f,1);
+    c[ImGuiCol_TabActive]=ImVec4(.16f,.15f,.18f,1);
+    c[ImGuiCol_TabHovered]=ImVec4(Accent().x,Accent().y,Accent().z,.23f);
 }
 inline void Section(const char* title) {
     ImGui::Spacing(); ImGui::TextColored(ImVec4(.53f,.56f,.58f,1), "%s", title);
@@ -159,6 +166,9 @@ inline void Icon(ImDrawList* d,ImVec2 p,int index,ImU32 color) {
     } else if(index==3) {
         d->AddRect(ImVec2(x-8,y-8),ImVec2(x+8,y+8),color,2,0,1.3f);
         d->AddLine(ImVec2(x-4,y-3),ImVec2(x+4,y-3),color);d->AddLine(ImVec2(x-4,y+2),ImVec2(x+4,y+2),color);
+    } else if(index==5) {
+        for(int row=0;row<2;row++) for(int col=0;col<2;col++)
+            d->AddRectFilled(ImVec2(x-7+col*9,y-7+row*9),ImVec2(x-1+col*9,y-1+row*9),color,1.5f);
     } else {
         d->AddCircle(p,6,color,20,1.3f);d->AddCircle(p,2,color,12,1.3f);
         for(int i=0;i<4;i++) {
@@ -181,6 +191,74 @@ inline bool Nav(const char* label,int index) {
     d->AddLine(ImVec2(arrow,p.y+19),ImVec2(arrow+3,p.y+22),color);d->AddLine(ImVec2(arrow+3,p.y+22),ImVec2(arrow,p.y+25),color);
     if(active) d->AddRectFilled(ImVec2(p.x,p.y+13),ImVec2(p.x+2,p.y+31),Color(Accent()),1);
     ImGui::PopID();if(clicked) page=index;return clicked;
+}
+inline const char* ModuleName(int i) {const char* names[]={"Aim Assist","ESP","Velocity"};return names[i];}
+inline bool ModuleVisible(int i) {
+    if(ModuleFilter==1 && !Favorites[i]) return false;
+    if(ModuleFilter>=2 && i!=ModuleFilter-2) return false;
+    std::string query(Search),name(ModuleName(i));
+    auto lower=[](unsigned char c){return char(std::tolower(c));};
+    std::transform(query.begin(),query.end(),query.begin(),lower);
+    std::transform(name.begin(),name.end(),name.begin(),lower);
+    return name.find(query)!=std::string::npos;
+}
+inline void ModuleCard(int index,ImVec2 size) {
+    bool* states[]={&settings::AA_Enabled,&settings::ESP_Enabled,&settings::Velocity_Enabled};
+    bool* enabled=states[index];const auto a=Accent();
+    ImGui::PushID(index);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg,*enabled?ImVec4(a.x*.24f+.02f,a.y*.24f+.02f,a.z*.24f+.02f,1):ImVec4(.085f,.08f,.095f,1));
+    ImGui::PushStyleColor(ImGuiCol_Border,*enabled?ImVec4(a.x,a.y,a.z,.45f):ImVec4(.16f,.15f,.18f,.5f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(0,0));
+    ImGui::BeginChild("##card",size,true,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);
+    const auto p=ImGui::GetWindowPos();auto* d=ImGui::GetWindowDrawList();
+    Icon(d,ImVec2(p.x+24,p.y+25),index,*enabled?Color(a):IM_COL32(158,155,169,255));
+    ImGui::SetCursorPos(ImVec2(size.x-49,16));
+    if(ImGui::InvisibleButton("##enabled",ImVec2(33,18))) *enabled=!*enabled;
+    if(ImGui::IsItemHovered()) ImGui::SetTooltip("%s %s",*enabled?"Disable":"Enable",ModuleName(index));
+    d->AddRectFilled(ImVec2(p.x+size.x-49,p.y+16),ImVec2(p.x+size.x-16,p.y+34),*enabled?Color(a):IM_COL32(57,54,64,255),9);
+    d->AddCircleFilled(ImVec2(p.x+size.x-40+(*enabled?15:0),p.y+25),6,IM_COL32(238,241,244,255),20);
+    ImGui::SetCursorPos(ImVec2(14,48));
+    if(ImGui::InvisibleButton("##open",ImVec2(size.x-28,54))) page=index;
+    if(ImGui::IsItemHovered()) {
+        d->AddRect(ImVec2(p.x+1,p.y+1),ImVec2(p.x+size.x-1,p.y+size.y-1),Color(ImVec4(a.x,a.y,a.z,.6f)),7);
+        ImGui::SetTooltip("Open %s settings",ModuleName(index));
+    }
+    ImFont* font=HeadingFont?HeadingFont:ImGui::GetFont();
+    d->AddText(font,18,ImVec2(p.x+16,p.y+52),IM_COL32(236,234,242,255),ModuleName(index));
+    const char* descriptions[]={"Targeting and precision","Player display and colors","Jump reset controls"};
+    d->AddText(ImVec2(p.x+16,p.y+80),IM_COL32(145,143,157,255),descriptions[index]);
+    ImGui::SetCursorPos(ImVec2(16,size.y-29));
+    if(ImGui::SmallButton(Favorites[index]?"Saved":"+ Favorite")) Favorites[index]=!Favorites[index];
+    ImGui::SetCursorPos(ImVec2(size.x-57,size.y-27));
+    ImGui::TextColored(*enabled?a:ImVec4(.45f,.44f,.49f,1),"%s",*enabled?"On":"Off");
+    ImGui::EndChild();ImGui::PopStyleVar();ImGui::PopStyleColor(2);ImGui::PopID();
+}
+inline void Dashboard() {
+    const char* filters[]={"All","Favorites","Combat","Render","Movement"};
+    if(ImGui::BeginTabBar("##moduleFilters")) {
+        for(int i=0;i<5;i++) {
+            if(ImGui::BeginTabItem(filters[i])) {
+                ModuleFilter=i;ImGui::EndTabItem();
+            }
+        }
+        ImGui::EndTabBar();
+    }
+    ImGui::Spacing();ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##searchModules","Search modules...",Search,sizeof(Search));
+    ImGui::Spacing();
+    const float available=ImGui::GetContentRegionAvail().x;
+    const int columns=available>=540?2:1;
+    const float cardWidth=(available-(columns-1)*12)/columns;
+    int count=0;
+    for(int i=0;i<3;i++) if(ModuleVisible(i)) {
+        if(count%columns) ImGui::SameLine(0,12);
+        ModuleCard(i,ImVec2(cardWidth,146));++count;
+    }
+    if(!count) {
+        ImGui::Spacing();ImGui::TextDisabled("No modules match this view.");
+        if(ModuleFilter==1) ImGui::TextWrapped("Add a module to Favorites from the All tab.");
+    }
+    ImGui::Spacing();ImGui::TextDisabled("Click a card to configure. Switches only affect this preview.");
 }
 inline void Preview() {
     Section("STYLE PREVIEW");
@@ -241,7 +319,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     ImGui::PopStyleColor();
     ImGui::SetCursorPos(ImVec2(12,82));
     ImGui::BeginChild("##navigation",ImVec2(sidebar-24,height-98),false,ImGuiWindowFlags_NoScrollbar);
-    Nav("Combat",0);Nav("Render",1);Nav("Movement",2);
+    Nav("Modules",5);ImGui::Spacing();Nav("Combat",0);Nav("Render",1);Nav("Movement",2);
     ImGui::Spacing();ImGui::Separator();ImGui::Spacing();Nav("Profiles",3);Nav("Appearance",4);
     ImGui::SetCursorPosY((std::max)(ImGui::GetCursorPosY()+16,height-194));
     ImGui::Separator();ImGui::TextDisabled("%s",standalone?"Preview only":"INSERT / menu");
@@ -254,8 +332,8 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
         ImGui::SameLine();if(ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();ImGui::EndPopup();
     }
     ImGui::EndChild();
-    const char* titles[]={"Aim Assist","Visuals","Velocity","Profiles","Appearance"};
-    const char* descriptions[]={"COMBAT / AIM ASSIST","RENDER / PLAYER DISPLAY","MOVEMENT / JUMP RESET","WORKSPACE / PROFILES","WORKSPACE / PERSONALIZATION"};
+    const char* titles[]={"Aim Assist","Visuals","Velocity","Profiles","Appearance","Modules"};
+    const char* descriptions[]={"COMBAT / AIM ASSIST","RENDER / PLAYER DISPLAY","MOVEMENT / JUMP RESET","WORKSPACE / PROFILES","WORKSPACE / PERSONALIZATION","WORKSPACE / MODULE LIBRARY"};
     ImGui::SetCursorPos(ImVec2(contentX,83));ImGui::TextDisabled("%s",descriptions[page]);
     ImGui::SetCursorPos(ImVec2(contentX,106));
     if(HeadingFont) ImGui::PushFont(HeadingFont);
@@ -263,7 +341,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     const float mainWidth=width-contentX-20-(rail?240.f:0);
     ImGui::SetCursorPos(ImVec2(contentX,146));
     ImGui::BeginChild("##settingsPanel",ImVec2(mainWidth,height-166),true);
-    switch(page) {case 0:Aim();break;case 1:Visuals();break;case 2:Velocity();break;case 3:profiles();break;case 4:preferences();break;}
+    switch(page) {case 0:Aim();break;case 1:Visuals();break;case 2:Velocity();break;case 3:profiles();break;case 4:preferences();break;case 5:Dashboard();break;}
     ImGui::EndChild();
     if(rail) {
         ImGui::SetCursorPos(ImVec2(contentX+mainWidth+16,146));
