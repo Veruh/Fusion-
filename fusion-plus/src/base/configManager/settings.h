@@ -7,7 +7,7 @@ struct settings {
 	inline static std::vector<std::string> friends;
 
 	// Menu
-	inline static float Menu_AccentColor[4]{ 0.55f, 0.36f, 1.0f, 1.0f };
+	inline static float Menu_AccentColor[4]{ 7.f/255.f, 139.f/255.f, 114.f/255.f, 1.f };
 	inline static bool Menu_GUIMovement = false;
 	inline static bool Menu_Watermark = true;
 	inline static bool Menu_DisableAllRendering = false;

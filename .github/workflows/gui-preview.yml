@@ -5,6 +5,7 @@ on:
     paths:
       - 'standalone/**'
       - 'fusion-plus/src/base/menu/fusionGui.h'
+      - 'fusion-plus/src/base/menu/premiumTheme.h'
       - 'fusion-plus/src/base/configManager/settings.h'
       - 'fusion-plus/ext/imgui/**'
       - '.github/workflows/gui-preview.yml'
@@ -53,6 +54,8 @@ jobs:
           }
           '@
           [PreviewPng]::Convert('standalone/build/gui-preview.ppm','standalone/build/gui-preview.png')
+          [PreviewPng]::Convert('standalone/build/gui-loading.ppm','standalone/build/gui-loading.png')
+          [PreviewPng]::Convert('standalone/build/gui-appearance.ppm','standalone/build/gui-appearance.png')
       - name: Record executable hash
         shell: pwsh
         run: Get-FileHash -LiteralPath standalone/build/Release/FusionStudio.exe -Algorithm SHA256 | Format-List
@@ -62,5 +65,8 @@ jobs:
           path: |
             standalone/build/Release/FusionStudio.exe
             standalone/build/gui-preview.png
+            standalone/build/gui-loading.png
+            standalone/build/gui-appearance.png
+            standalone/build/LICENSE-Inter.txt
           if-no-files-found: error
           retention-days: 7
