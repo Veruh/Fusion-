@@ -1,4 +1,6 @@
-# FUSION+
+[README.md](https://github.com/user-attachments/files/34260328/README.md)
+ements, and support.
+<!-- Contact me on [Discord](https://www.discord.com/users/706262422251634809) (@himeji.) for any questions, suggestions or issues. --># FUSION+
 
 This project is based on the original **Fusion** by [deity](https://www.youtube.com/@x64x70) and [redacted](), which is no longer maintained. *Fusion+* aims to carry the project forward with additional features, optimizations, and enhancements for personal use as well as for developers seeking a solid foundation for further customization.
 
