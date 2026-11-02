@@ -1,0 +1,72 @@
+name: Build standalone GUI
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'standalone/**'
+      - 'fusion-plus/src/base/menu/fusionGui.h'
+      - 'fusion-plus/src/base/menu/premiumTheme.h'
+      - 'fusion-plus/src/base/configManager/settings.h'
+      - 'fusion-plus/ext/imgui/**'
+      - '.github/workflows/gui-preview.yml'
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure standalone only
+        run: cmake -S standalone -B standalone/build -A x64
+      - name: Compile preview
+        run: cmake --build standalone/build --config Release --parallel 2
+      - name: Test profiles and UI without injection
+        run: ctest --test-dir standalone/build -C Release --output-on-failure
+      - name: Convert test UI capture to PNG
+        shell: powershell
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
+          using System;
+          using System.IO;
+          using System.Drawing;
+          using System.Drawing.Imaging;
+          public static class PreviewPng {
+            public static void Convert(string input,string output) {
+              byte[] raw=File.ReadAllBytes(input);
+              int offset=0,lines=0;
+              while(lines<3) if(raw[offset++]==10) lines++;
+              const int width=1280,height=800;
+              using(var image=new Bitmap(width,height,PixelFormat.Format24bppRgb)) {
+                var bits=image.LockBits(new Rectangle(0,0,width,height),ImageLockMode.WriteOnly,PixelFormat.Format24bppRgb);
+                byte[] pixels=new byte[bits.Stride*height];
+                for(int y=0;y<height;y++) for(int x=0;x<width;x++) {
+                  int source=offset+(y*width+x)*3,target=y*bits.Stride+x*3;
+                  pixels[target]=raw[source+2];pixels[target+1]=raw[source+1];pixels[target+2]=raw[source];
+                }
+                System.Runtime.InteropServices.Marshal.Copy(pixels,0,bits.Scan0,pixels.Length);
+                image.UnlockBits(bits);image.Save(output,ImageFormat.Png);
+              }
+            }
+          }
+          '@
+          [PreviewPng]::Convert('standalone/build/gui-preview.ppm','standalone/build/gui-preview.png')
+          [PreviewPng]::Convert('standalone/build/gui-loading.ppm','standalone/build/gui-loading.png')
+          [PreviewPng]::Convert('standalone/build/gui-appearance.ppm','standalone/build/gui-appearance.png')
+      - name: Record executable hash
+        shell: pwsh
+        run: Get-FileHash -LiteralPath standalone/build/Release/FusionStudio.exe -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FusionStudio-windows-x64
+          path: |
+            standalone/build/Release/FusionStudio.exe
+            standalone/build/gui-preview.png
+            standalone/build/gui-loading.png
+            standalone/build/gui-appearance.png
+            standalone/build/LICENSE-Inter.txt
+          if-no-files-found: error
+          retention-days: 7

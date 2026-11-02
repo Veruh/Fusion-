@@ -2,50 +2,58 @@
 #include "imgui/imgui.h"
 #include "configManager/settings.h"
 #include <algorithm>
-#include <cmath>
+#include <cctype>
+#include <cstdio>
+#include "premiumTheme.h"
 
 // Shared by the injected menu and the standalone, non-injecting visual preview.
 namespace FusionGui {
-inline int page = 0;
-inline ImVec4 Accent() { return ImVec4(settings::Menu_AccentColor[0], settings::Menu_AccentColor[1], settings::Menu_AccentColor[2], 1); }
-inline ImU32 Color(ImVec4 c) { return ImGui::ColorConvertFloat4ToU32(c); }
+inline int page = 5;
+inline void SelectPage(int next) {if(next!=page) {page=next;PageStart=ImGui::GetTime();}}
+inline bool Favorites[3]={false,false,false};
+inline int ModuleFilter=0;
+inline char Search[64]="";
+inline ImFont* HeadingFont=nullptr;
+inline ImFont* BrandFont=nullptr;
+inline bool ShowPreview=false;
+inline ImVec4 Accent() { return EmeraldAccent(settings::Menu_AccentColor); }
+inline ImU32 Color(ImVec4 c) { c.w*=ImGui::GetStyle().Alpha;return ImGui::ColorConvertFloat4ToU32(c); }
 inline void Theme() {
     auto& s = ImGui::GetStyle();
-    s.WindowRounding = 10; s.ChildRounding = 7; s.FrameRounding = 5;
+    s.WindowRounding = 9; s.ChildRounding = 6; s.FrameRounding = 4;
     s.PopupRounding = 8; s.GrabRounding = 6; s.ScrollbarRounding = 6;
     s.WindowBorderSize = 1; s.ChildBorderSize = 1; s.FrameBorderSize = 0;
-    s.WindowPadding = ImVec2(18,18); s.FramePadding = ImVec2(10,7);
+    s.WindowPadding = ImVec2(20,18); s.FramePadding = ImVec2(10,5);
     s.ItemSpacing = ImVec2(12,10); s.ItemInnerSpacing = ImVec2(8,6);
     s.ScrollbarSize = 9; s.GrabMinSize = 12;
     auto* c = s.Colors;
-    c[ImGuiCol_Text] = ImVec4(.95f,.95f,.95f,1);
-    c[ImGuiCol_TextDisabled] = ImVec4(.59f,.58f,.61f,1);
-    c[ImGuiCol_WindowBg] = ImVec4(.047f,.047f,.055f,.99f);
-    c[ImGuiCol_ChildBg] = ImVec4(.085f,.078f,.090f,1);
-    c[ImGuiCol_PopupBg] = ImVec4(.10f,.095f,.11f,1);
-    c[ImGuiCol_Border] = ImVec4(.18f,.17f,.19f,.8f);
-    c[ImGuiCol_FrameBg] = ImVec4(.13f,.125f,.14f,1);
-    c[ImGuiCol_FrameBgHovered] = ImVec4(.17f,.16f,.18f,1);
-    c[ImGuiCol_FrameBgActive] = ImVec4(.19f,.19f,.21f,1);
-    c[ImGuiCol_Button] = ImVec4(.13f,.125f,.14f,1);
-    c[ImGuiCol_ButtonHovered] = ImVec4(.16f,.22f,.20f,1);
+    c[ImGuiCol_Text] = Palette::Text;
+    c[ImGuiCol_TextDisabled] = Palette::Secondary;
+    c[ImGuiCol_WindowBg] = Palette::Main;
+    c[ImGuiCol_ChildBg] = Palette::Surface;
+    c[ImGuiCol_PopupBg] = Palette::Elevated;
+    c[ImGuiCol_Border] = Palette::Rgb(0x2B282D,.72f);
+    c[ImGuiCol_FrameBg] = Palette::Interactive;
+    c[ImGuiCol_FrameBgHovered] = Palette::Rgb(0x2A272D);
+    c[ImGuiCol_FrameBgActive] = Palette::Rgb(0x302C33);
+    c[ImGuiCol_Button] = Palette::Interactive;
+    c[ImGuiCol_ButtonHovered] = Palette::Rgb(0x2A272D);
     c[ImGuiCol_ButtonActive] = Accent();
-    c[ImGuiCol_Header] = ImVec4(.055f,.25f,.21f,1);
-    c[ImGuiCol_HeaderHovered] = ImVec4(.065f,.30f,.25f,1);
+    c[ImGuiCol_Header] = ImVec4(Accent().x,Accent().y,Accent().z,.12f);
+    c[ImGuiCol_HeaderHovered] = ImVec4(Accent().x,Accent().y,Accent().z,.2f);
     c[ImGuiCol_HeaderActive] = Accent();
     c[ImGuiCol_SliderGrab] = c[ImGuiCol_SliderGrabActive] = c[ImGuiCol_CheckMark] = Accent();
-    c[ImGuiCol_Separator] = ImVec4(.18f,.17f,.19f,.8f);
+    c[ImGuiCol_Separator] = Palette::Rgb(0x2B282D,.7f);
     c[ImGuiCol_ScrollbarBg] = ImVec4(0,0,0,0);
-    c[ImGuiCol_ScrollbarGrab] = ImVec4(.26f,.25f,.27f,1);
+    c[ImGuiCol_ScrollbarGrab] = Palette::Rgb(0x363139);
     c[ImGuiCol_NavHighlight] = Accent();
+    c[ImGuiCol_Tab]=Palette::Surface;
+    c[ImGuiCol_TabActive]=Palette::Interactive;
+    c[ImGuiCol_TabHovered]=ImVec4(Accent().x,Accent().y,Accent().z,.23f);
 }
 inline void Section(const char* title) {
-    ImGui::Spacing(); ImGui::TextColored(ImVec4(.28f,.72f,.61f,1), "%s", title);
+    ImGui::Spacing(); ImGui::TextColored(Palette::Secondary, "%s", title);
     ImGui::Separator(); ImGui::Spacing();
-}
-inline float Smooth(float current, float target, float dt, float speed = 14.f) {
-    const float blend = 1.f - expf(-speed * (std::min)(dt, .05f));
-    return current + (target - current) * blend;
 }
 inline void Toggle(const char* label, bool* value) {
     ImGui::PushID(label);
@@ -54,19 +62,13 @@ inline void Toggle(const char* label, bool* value) {
     const bool pressed = ImGui::InvisibleButton("##toggle", ImVec2(w,32));
     if (pressed) *value = !*value;
     auto* d = ImGui::GetWindowDrawList();
-    if (ImGui::IsItemHovered()) d->AddRectFilled(p,ImVec2(p.x+w,p.y+32),IM_COL32(255,255,255,6),5);
+    const float hover=Animate("##hover",ImGui::IsItemHovered()?1.f:0.f,.14f);
+    if(hover>0) d->AddRectFilled(p,ImVec2(p.x+w,p.y+32),Color(Palette::Rgb(0xFFFFFF,.025f*hover)),4);
     d->AddText(ImVec2(p.x,p.y+7),ImGui::GetColorU32(ImGuiCol_Text),label);
-    const float x = p.x+w-42, y=p.y+5;
-    const ImGuiID id = ImGui::GetID("##toggle");
-    ImGuiStorage* storage = ImGui::GetStateStorage();
-    const float target = *value ? 1.f : 0.f;
-    float progress = storage->GetFloat(id, target);
-    progress = Smooth(progress, target, ImGui::GetIO().DeltaTime);
-    storage->SetFloat(id, progress);
-    const ImVec4 off(.17f,.16f,.18f,1.f), on = Accent();
-    const ImVec4 fill(off.x+(on.x-off.x)*progress,off.y+(on.y-off.y)*progress,off.z+(on.z-off.z)*progress,1.f);
-    d->AddRectFilled(ImVec2(x,y),ImVec2(x+42,y+22),Color(fill),11);
-    d->AddCircleFilled(ImVec2(x+11+20*progress,y+11),8,IM_COL32(242,244,242,255),20);
+    const float x = p.x+w-34, y=p.y+7;
+    const float t=Animate("##animation",*value?1.f:0.f,.21f);
+    d->AddRectFilled(ImVec2(x,y),ImVec2(x+34,y+18),Color(Mix(Palette::Rgb(0x363239),Accent(),t)),9);
+    d->AddCircleFilled(ImVec2(x+9+t*16,y+9),6.5f,Color(Mix(Palette::Rgb(0xA5A1AA),Palette::Text,t)),20);
     ImGui::PopID();
 }
 inline void Float(const char* label,float* v,float lo,float hi,const char* format="%.1f") {
@@ -153,15 +155,164 @@ inline void Velocity() {
     Float("Reaction time",&settings::Velocity_JRReactionTime,0,1000,"%.1f ms");
     Int("Chance",&settings::Velocity_JRChange,0,100,"%d %%");
 }
+inline void Icon(ImDrawList* d,ImVec2 p,int index,ImU32 color) {
+    const float x=p.x,y=p.y;
+    if(index==0) {
+        d->AddCircle(p,6,color,24,1.3f);
+        d->AddLine(ImVec2(x-10,y),ImVec2(x-3,y),color,1.3f);d->AddLine(ImVec2(x+3,y),ImVec2(x+10,y),color,1.3f);
+        d->AddLine(ImVec2(x,y-10),ImVec2(x,y-3),color,1.3f);d->AddLine(ImVec2(x,y+3),ImVec2(x,y+10),color,1.3f);
+    } else if(index==1) {
+        d->AddLine(ImVec2(x-10,y),ImVec2(x,y-6),color,1.3f);d->AddLine(ImVec2(x,y-6),ImVec2(x+10,y),color,1.3f);
+        d->AddLine(ImVec2(x+10,y),ImVec2(x,y+6),color,1.3f);d->AddLine(ImVec2(x,y+6),ImVec2(x-10,y),color,1.3f);d->AddCircle(p,2.5f,color,16,1.3f);
+    } else if(index==2) {
+        d->AddLine(ImVec2(x-9,y+6),ImVec2(x+7,y-6),color,1.5f);d->AddLine(ImVec2(x,y-6),ImVec2(x+7,y-6),color,1.5f);d->AddLine(ImVec2(x+7,y-6),ImVec2(x+7,y+1),color,1.5f);
+    } else if(index==3) {
+        d->AddRect(ImVec2(x-8,y-8),ImVec2(x+8,y+8),color,2,0,1.3f);
+        d->AddLine(ImVec2(x-4,y-3),ImVec2(x+4,y-3),color);d->AddLine(ImVec2(x-4,y+2),ImVec2(x+4,y+2),color);
+    } else if(index==5) {
+        for(int row=0;row<2;row++) for(int col=0;col<2;col++)
+            d->AddRectFilled(ImVec2(x-7+col*9,y-7+row*9),ImVec2(x-1+col*9,y-1+row*9),color,1.5f);
+    } else {
+        d->AddCircle(p,6,color,20,1.3f);d->AddCircle(p,2,color,12,1.3f);
+        for(int i=0;i<4;i++) {
+            const float dx=(i==0?1.f:i==1?-1.f:0.f),dy=(i==2?1.f:i==3?-1.f:0.f);
+            d->AddLine(ImVec2(x+dx*6,y+dy*6),ImVec2(x+dx*10,y+dy*10),color,2);
+        }
+    }
+}
 inline bool Nav(const char* label,int index) {
-    const bool active=page==index;
-    ImGui::PushStyleColor(ImGuiCol_Button, active?ImVec4(.055f,.20f,.17f,1):ImVec4(0,0,0,0));
-    ImGui::PushStyleColor(ImGuiCol_Text,active?ImVec4(1,1,1,1):ImVec4(.61f,.60f,.63f,1));
-    bool clicked=ImGui::Button(label,ImVec2(-1,42));
-    if(active) { auto p=ImGui::GetItemRectMin(); ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(p.x,p.y+9),ImVec2(p.x+3,p.y+33),Color(Accent()),2); }
+    ImGui::PushID(index);
+    const auto p=ImGui::GetCursorScreenPos();const float localY=ImGui::GetCursorPosY();
+    const float w=ImGui::GetContentRegionAvail().x;const bool active=page==index;
+    bool clicked=ImGui::InvisibleButton("##navigation",ImVec2(w,42));
+    const float hover=Animate("##hover",ImGui::IsItemHovered()?1.f:0.f,.15f);
+    const float selected=Animate("##selected",active?1.f:0.f,.23f);
+    auto* d=ImGui::GetWindowDrawList();
+    d->AddRectFilled(p,ImVec2(p.x+w,p.y+42),Color(Mix(Palette::Main,Palette::Interactive,.3f*hover+.32f*selected)),4);
+    const auto ink=Color(Mix(Palette::Secondary,Accent(),selected));
+    Icon(d,ImVec2(p.x+18,p.y+21),index,ink);
+    d->AddText(ImVec2(p.x+40,p.y+12),Color(Mix(Palette::Secondary,Palette::Text,selected)),label);
+    const float arrow=p.x+w-15;
+    d->AddLine(ImVec2(arrow,p.y+18),ImVec2(arrow+3,p.y+21),ink);d->AddLine(ImVec2(arrow+3,p.y+21),ImVec2(arrow,p.y+24),ink);
+    if(active) IndicatorTarget=localY+12;
+    ImGui::PopID();if(clicked) SelectPage(index);return clicked;
+}
+inline const char* ModuleName(int i) {const char* names[]={"Aim Assist","ESP","Velocity"};return names[i];}
+inline bool ModuleVisible(int i) {
+    if(ModuleFilter==1 && !Favorites[i]) return false;
+    if(ModuleFilter>=2 && i!=ModuleFilter-2) return false;
+    std::string query(Search),name(ModuleName(i));
+    auto lower=[](unsigned char c){return char(std::tolower(c));};
+    std::transform(query.begin(),query.end(),query.begin(),lower);
+    std::transform(name.begin(),name.end(),name.begin(),lower);
+    return name.find(query)!=std::string::npos;
+}
+inline void ModuleCard(int index,ImVec2 size) {
+    bool* states[]={&settings::AA_Enabled,&settings::ESP_Enabled,&settings::Velocity_Enabled};
+    bool* enabled=states[index];const auto a=Accent();
+    ImGui::PushID(index);
+    const float on=Animate("##card-on",*enabled?1.f:0.f,.21f);
+    const float reveal=ReducedMotion?1.f:Progress(FilterStart,.20f+index*.02f);
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha,ImGui::GetStyle().Alpha*(.5f+.5f*reveal));
+    const auto cardOrigin=ImGui::GetCursorScreenPos();
+    ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cardOrigin.x,cardOrigin.y+3),ImVec2(cardOrigin.x+size.x,cardOrigin.y+size.y+3),Color(Palette::Rgb(0x000000,.14f)),6);
+    ImGui::PushStyleColor(ImGuiCol_ChildBg,Palette::Elevated);
+    ImGui::PushStyleColor(ImGuiCol_Border,Mix(Palette::Rgb(0x2B282D,.6f),ImVec4(a.x,a.y,a.z,.26f),on));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(0,0));
+    ImGui::BeginChild("##card",size,true,ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);
+    const auto p=ImGui::GetWindowPos();auto* d=ImGui::GetWindowDrawList();
+    Icon(d,ImVec2(p.x+24,p.y+25),index,Color(Mix(Palette::Secondary,a,on*.8f)));
+    ImGui::SetCursorPos(ImVec2(size.x-49,16));
+    if(ImGui::InvisibleButton("##enabled",ImVec2(33,18))) *enabled=!*enabled;
+    if(ImGui::IsItemHovered()) ImGui::SetTooltip("%s %s",*enabled?"Disable":"Enable",ModuleName(index));
+    d->AddRectFilled(ImVec2(p.x+size.x-49,p.y+16),ImVec2(p.x+size.x-16,p.y+34),Color(Mix(Palette::Rgb(0x39353D),a,on)),9);
+    d->AddCircleFilled(ImVec2(p.x+size.x-40+on*15,p.y+25),6,Color(Mix(Palette::Rgb(0xA5A1AA),Palette::Text,on)),20);
+    ImGui::SetCursorPos(ImVec2(14,48));
+    if(ImGui::InvisibleButton("##open",ImVec2(size.x-28,54))) SelectPage(index);
+    const float hover=Animate("##card-hover",ImGui::IsItemHovered()?1.f:0.f,.15f);
+    if(hover>.01f) d->AddRect(ImVec2(p.x+1,p.y+1),ImVec2(p.x+size.x-1,p.y+size.y-1),Color(Palette::Rgb(0xFFFFFF,.07f*hover)),6);
+    if(ImGui::IsItemHovered()) ImGui::SetTooltip("Open %s settings",ModuleName(index));
+    ImFont* font=HeadingFont?HeadingFont:ImGui::GetFont();
+    d->AddText(font,17,ImVec2(p.x+16,p.y+52),Color(Palette::Text),ModuleName(index));
+    const char* descriptions[]={"Targeting and precision","Player display and colors","Jump reset controls"};
+    d->AddText(ImVec2(p.x+16,p.y+79),Color(Palette::Secondary),descriptions[index]);
+    ImGui::SetCursorPos(ImVec2(16,size.y-30));
+    ImGui::PushStyleColor(ImGuiCol_Button,ImVec4(0,0,0,0));
+    ImGui::PushStyleColor(ImGuiCol_Text,Favorites[index]?a:Palette::Muted);
+    if(ImGui::SmallButton(Favorites[index]?"Favorited":"+ Favorite")) Favorites[index]=!Favorites[index];
     ImGui::PopStyleColor(2);
-    if(clicked) page=index;
-    return clicked;
+    d->AddCircleFilled(ImVec2(p.x+size.x-49,p.y+size.y-20),2.5f,Color(Mix(Palette::Muted,a,on)),12);
+    d->AddText(ImVec2(p.x+size.x-40,p.y+size.y-27),Color(Mix(Palette::Muted,a,on)),*enabled?"On":"Off");
+    ImGui::EndChild();ImGui::PopStyleVar();ImGui::PopStyleColor(2);ImGui::PopStyleVar();ImGui::PopID();
+}
+inline void Dashboard() {
+    const char* filters[]={"All","Favorites","Combat","Render","Movement"};
+    float activeLeft=0,activeRight=0;const float underlineY=ImGui::GetCursorScreenPos().y+32;
+    for(int i=0;i<5;i++) {
+        if(i) ImGui::SameLine(0,4);
+        ImGui::PushID(i);const auto p=ImGui::GetCursorScreenPos();
+        const float w=ImGui::CalcTextSize(filters[i]).x+20;
+        if(ImGui::InvisibleButton("##tab",ImVec2(w,34))) {ModuleFilter=i;FilterStart=ImGui::GetTime();}
+        const float hover=Animate("##tab-hover",ImGui::IsItemHovered()?1.f:0.f,.14f);
+        auto* draw=ImGui::GetWindowDrawList();
+        if(hover>.01f) draw->AddRectFilled(p,ImVec2(p.x+w,p.y+30),Color(Palette::Rgb(0xFFFFFF,.025f*hover)),4);
+        draw->AddText(ImVec2(p.x+10,p.y+7),Color(ModuleFilter==i?Palette::Text:Palette::Secondary),filters[i]);
+        if(ModuleFilter==i) {activeLeft=p.x+10;activeRight=p.x+w-10;}
+        ImGui::PopID();
+    }
+    if(TabLeft<0 || ReducedMotion) {TabLeft=activeLeft;TabRight=activeRight;}
+    TabLeft=Smooth(TabLeft,activeLeft,ImGui::GetIO().DeltaTime,.23f,ReducedMotion);
+    TabRight=Smooth(TabRight,activeRight,ImGui::GetIO().DeltaTime,.23f,ReducedMotion);
+    ImGui::GetWindowDrawList()->AddLine(ImVec2(TabLeft,underlineY),ImVec2(TabRight,underlineY),Color(Accent()),2);
+    ImGui::Spacing();
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+    if(ImGui::InputTextWithHint("##searchModules","Search modules...",Search,sizeof(Search))) FilterStart=ImGui::GetTime();
+    const float focus=Animate("##search-focus",ImGui::IsItemActive()?1.f:0.f,.16f);
+    if(focus>.01f) ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(),ImGui::GetItemRectMax(),Color(ImVec4(Accent().x,Accent().y,Accent().z,.45f*focus)),4);
+    ImGui::Spacing();
+    const float available=ImGui::GetContentRegionAvail().x;
+    const int columns=available>=540?2:1;
+    const float cardWidth=(available-(columns-1)*12)/columns;
+    int count=0;
+    for(int i=0;i<3;i++) if(ModuleVisible(i)) {
+        if(count%columns) ImGui::SameLine(0,12);
+        ModuleCard(i,ImVec2(cardWidth,144));++count;
+    }
+    if(!count) {
+        ImGui::Spacing();ImGui::TextDisabled("No modules match this view.");
+        if(ModuleFilter==1) ImGui::TextWrapped("Add a module to Favorites from the All tab.");
+    }
+    ImGui::Spacing();ImGui::TextDisabled("Open a card to configure. Local preview only.");
+}
+inline void Startup(float completed,const char* status,float alpha=1) {
+    Theme();auto* d=ImGui::GetBackgroundDrawList();const auto display=ImGui::GetIO().DisplaySize;
+    auto ink=[&](unsigned hex,float a=1){return Color(Palette::Rgb(hex,a*alpha));};
+    const float cx=display.x*.5f,cy=display.y*.5f;
+    // Very low contrast planes give the loading surface depth without neon effects.
+    d->AddTriangleFilled(ImVec2(cx-390,cy-230),ImVec2(cx+140,cy-260),ImVec2(cx-60,cy+230),ink(0x141216,.7f));
+    d->AddTriangleFilled(ImVec2(cx+380,cy-180),ImVec2(cx+320,cy+230),ImVec2(cx-140,cy+220),ink(0x19161B,.45f));
+    const float w=(std::min)(460.f,display.x-40),h=208;
+    ImVec2 p(cx-w*.5f,cy-h*.5f);
+    d->AddRectFilled(ImVec2(p.x-3,p.y+7),ImVec2(p.x+w+3,p.y+h+9),ink(0x000000,.25f),10);
+    d->AddRectFilled(p,ImVec2(p.x+w,p.y+h),ink(0x101012),8);
+    d->AddRect(p,ImVec2(p.x+w,p.y+h),ink(0x2B282D,.7f),8);
+    auto* font=BrandFont?BrandFont:ImGui::GetFont();
+    const float brandWidth=BrandWidth(font,29,"FUSION",1.3f);
+    DrawBrand(d,font,ImVec2(cx-brandWidth*.5f,p.y+34),29,ink(0xF2F2F3),1.3f);
+    const char* subtitle="STUDIO";const float subWidth=ImGui::CalcTextSize(subtitle).x;
+    d->AddText(ImVec2(cx-subWidth*.5f,p.y+75),ink(0x99979D),subtitle);
+    const float completedProgress=std::clamp(completed,0.f,1.f),barWidth=w-64;
+    LoadingVisual=Smooth(LoadingVisual,completedProgress,ImGui::GetIO().DeltaTime,.20f,ReducedMotion);
+    const float progress=(std::min)(LoadingVisual,completedProgress);
+    d->AddRectFilled(ImVec2(p.x+32,p.y+121),ImVec2(p.x+w-32,p.y+126),ink(0x222024),2.5f);
+    if(progress>0) {
+        d->AddRectFilled(ImVec2(p.x+31,p.y+119),ImVec2(p.x+33+barWidth*progress,p.y+128),ink(0x078B72,.065f),4);
+        d->AddRectFilled(ImVec2(p.x+32,p.y+121),ImVec2(p.x+32+barWidth*progress,p.y+126),ink(0x078B72),2.5f);
+    }
+    d->AddText(ImVec2(p.x+32,p.y+146),ink(0x99979D),status);
+    char percentage[12];std::snprintf(percentage,sizeof(percentage),"%d%%",int(completedProgress*100));
+    const float numberWidth=ImGui::CalcTextSize(percentage).x;
+    d->AddText(ImVec2(p.x+w-32-numberWidth,p.y+146),ink(0x66636B),percentage);
 }
 inline void Preview() {
     Section("STYLE PREVIEW");
@@ -170,34 +321,38 @@ inline void Preview() {
     const float width=ImGui::GetContentRegionAvail().x;
     ImGui::Dummy(ImVec2(width,196));
     auto* d=ImGui::GetWindowDrawList();
-    d->AddRectFilled(p,ImVec2(p.x+width,p.y+196),IM_COL32(20,19,23,255),8);
+    d->AddRectFilled(p,ImVec2(p.x+width,p.y+196),Color(Palette::Main),8);
     float cx=p.x+width*.5f, cy=p.y+96;
     const auto a=Color(Accent());
-    d->AddLine(ImVec2(p.x+15,p.y+171),ImVec2(p.x+width-15,p.y+171),IM_COL32(49,46,52,255));
-    d->AddRectFilled(ImVec2(cx-15,cy-45),ImVec2(cx+15,cy-15),IM_COL32(116,109,155,255),3);
-    d->AddRectFilled(ImVec2(cx-20,cy-10),ImVec2(cx+20,cy+34),IM_COL32(70,62,111,255),3);
-    d->AddRectFilled(ImVec2(cx-20,cy+38),ImVec2(cx-3,cy+68),IM_COL32(56,57,82,255),2);
-    d->AddRectFilled(ImVec2(cx+3,cy+38),ImVec2(cx+20,cy+68),IM_COL32(56,57,82,255),2);
+    d->AddLine(ImVec2(p.x+15,p.y+171),ImVec2(p.x+width-15,p.y+171),Color(Palette::Border));
+    d->AddRectFilled(ImVec2(cx-15,cy-45),ImVec2(cx+15,cy-15),Color(Palette::Rgb(0x625D66)),3);
+    d->AddRectFilled(ImVec2(cx-20,cy-10),ImVec2(cx+20,cy+34),Color(Palette::Rgb(0x454049)),3);
+    d->AddRectFilled(ImVec2(cx-20,cy+38),ImVec2(cx-3,cy+68),Color(Palette::Rgb(0x363239)),2);
+    d->AddRectFilled(ImVec2(cx+3,cy+38),ImVec2(cx+20,cy+68),Color(Palette::Rgb(0x363239)),2);
     if(page==1) {
         if(settings::ESP_FilledBox) d->AddRectFilled(ImVec2(cx-31,cy-53),ImVec2(cx+31,cy+73),Color(ImVec4(Accent().x,Accent().y,Accent().z,.12f)));
         if(settings::ESP_Box || settings::ESP_BoxType==1) d->AddRect(ImVec2(cx-31,cy-53),ImVec2(cx+31,cy+73),a,3,0,1.5f);
-        if(settings::ESP_HealthBar) d->AddLine(ImVec2(cx-38,cy+72),ImVec2(cx-38,cy-52),IM_COL32(59,223,169,255),3);
-        if(settings::ESP_Text) d->AddText(ImVec2(cx-34,cy-75),IM_COL32(219,220,240,255),"Player");
+        if(settings::ESP_HealthBar) d->AddLine(ImVec2(cx-38,cy+72),ImVec2(cx-38,cy-52),Color(ImVec4(59/255.f,223/255.f,169/255.f,255/255.f)),3);
+        if(settings::ESP_Text) d->AddText(ImVec2(cx-34,cy-75),Color(Palette::Text),"Player");
     } else {
         d->AddCircle(ImVec2(cx,cy),58,a,64,1.5f);
         d->AddLine(ImVec2(cx-70,cy),ImVec2(cx-48,cy),a,1.5f);
         d->AddLine(ImVec2(cx+48,cy),ImVec2(cx+70,cy),a,1.5f);
         d->AddLine(ImVec2(cx,cy-70),ImVec2(cx,cy-48),a,1.5f);
-        d->AddCircleFilled(ImVec2(cx,cy),3,IM_COL32(230,229,250,255));
+        d->AddCircleFilled(ImVec2(cx,cy),3,Color(Palette::Text));
     }
 }
 // Callback functions keep filesystem operations out of the presentation layer.
-inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* running) {
+inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* running,bool standalone=false) {
     Theme();
+    if(LastPage!=page) {LastPage=page;PageStart=ImGui::GetTime();}
+    const float entrance=Progress(EntranceStart,.42f);
+    if(entrance<1) Startup(1,"Workspace ready",1-entrance);
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha,ImGui::GetStyle().Alpha*entrance);
     ImGuiIO& io=ImGui::GetIO();
-    const bool compact=io.DisplaySize.x<980;
-    const float width=(std::min)(compact?740.f:980.f,(std::max)(320.f,io.DisplaySize.x-24));
-    const float height=(std::min)(650.f,(std::max)(240.f,io.DisplaySize.y-24));
+    const bool rail=ShowPreview && io.DisplaySize.x>=1050 && page<3;
+    const float width=(std::min)(rail?1040.f:840.f,(std::max)(320.f,io.DisplaySize.x-24));
+    const float height=(std::min)(610.f,(std::max)(240.f,io.DisplaySize.y-24));
     ImGui::SetNextWindowSize(ImVec2(width,height));
     static ImVec2 previousDisplay(0,0);
     const bool resized=previousDisplay.x!=io.DisplaySize.x || previousDisplay.y!=io.DisplaySize.y;
@@ -206,58 +361,62 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(0,0));
     bool visible=ImGui::Begin("FUSION+##main",nullptr,ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoScrollbar);
     ImGui::PopStyleVar();
-    if(!visible) { ImGui::End(); return; }
-    auto origin=ImGui::GetWindowPos(); auto* draw=ImGui::GetWindowDrawList();
-    draw->AddRectFilled(ImVec2(origin.x+1,origin.y+1),ImVec2(origin.x+width-1,origin.y+70),IM_COL32(19,18,22,255),14,ImDrawFlags_RoundCornersTop);
-    draw->AddLine(ImVec2(origin.x+18,origin.y+70),ImVec2(origin.x+width-18,origin.y+70),IM_COL32(43,41,46,255));
-    draw->AddCircle(ImVec2(origin.x+31,origin.y+33),13,Color(Accent()),6,2);
-    draw->AddText(ImVec2(origin.x+56,origin.y+18),IM_COL32(242,241,255,255),"F U S I O N +");
-    draw->AddText(ImVec2(origin.x+56,origin.y+41),IM_COL32(151,148,155,255),"YOUR CONFIG. YOUR STYLE.");
-    ImGui::SetCursorPos(ImVec2(width-116,23));
-    ImGui::TextDisabled("v0.0.4"); ImGui::SameLine();
-    if(ImGui::SmallButton(" X ")) *open=false;
-    const float sidebar=compact?144.f:174.f;
-    ImGui::SetCursorPos(ImVec2(14,86));
-    ImGui::BeginChild("##navigation",ImVec2(sidebar-14,height-104),false,ImGuiWindowFlags_NoScrollbar);
-    ImGui::TextDisabled("  WORKSPACE"); ImGui::Spacing();
-    Nav("Aim Assist",0); Nav("Visuals",1); Nav("Velocity",2);
-    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
-    Nav("Profiles",3); Nav("Settings",4);
-    ImGui::SetCursorPosY((std::max)(ImGui::GetCursorPosY()+16,height-214));
-    ImGui::Separator(); ImGui::TextDisabled(" INSERT / menu");
-    ImGui::PushStyleColor(ImGuiCol_Text,ImVec4(.93f,.53f,.58f,1));
-    if(ImGui::Button("Detach",ImVec2(-1,32))) ImGui::OpenPopup("Detach Fusion?");
+    if(!visible) {ImGui::End();ImGui::PopStyleVar();return;}
+    auto o=ImGui::GetWindowPos();auto* d=ImGui::GetWindowDrawList();
+    const float sidebar=180,contentX=200;
+    d->AddRectFilled(ImVec2(o.x+1,o.y+1),ImVec2(o.x+sidebar,o.y+height-1),Color(Palette::Main),9,ImDrawFlags_RoundCornersLeft);
+    d->AddLine(ImVec2(o.x+sidebar,o.y+1),ImVec2(o.x+sidebar,o.y+height-1),Color(Palette::Border));
+    d->AddLine(ImVec2(o.x+1,o.y+65),ImVec2(o.x+width-1,o.y+65),Color(Palette::Border));
+    ImFont* brand=BrandFont?BrandFont:ImGui::GetFont();
+    DrawBrand(d,brand,ImVec2(o.x+20,o.y+13),22,Color(Palette::Text),.7f);
+    d->AddText(ImVec2(o.x+21,o.y+41),Color(Palette::Secondary),"STUDIO");
+    ImGui::SetCursorPos(ImVec2(width-86,22));
+    ImGui::PushStyleColor(ImGuiCol_Button,ImVec4(0,0,0,0));
+    if(ImGui::SmallButton("Style")) SelectPage(4);
+    ImGui::SameLine();if(ImGui::SmallButton("x")) *open=false;
     ImGui::PopStyleColor();
+    ImGui::SetCursorPos(ImVec2(12,82));
+    ImGui::BeginChild("##navigation",ImVec2(sidebar-24,height-98),false,ImGuiWindowFlags_NoScrollbar);
+    Nav("Modules",5);ImGui::Spacing();Nav("Combat",0);Nav("Render",1);Nav("Movement",2);
+    ImGui::Spacing();ImGui::Separator();ImGui::Spacing();Nav("Profiles",3);Nav("Appearance",4);
+    if(IndicatorY<0) IndicatorY=IndicatorTarget;
+    IndicatorY=Smooth(IndicatorY,IndicatorTarget,io.DeltaTime,.24f,ReducedMotion);
+    const auto navOrigin=ImGui::GetWindowPos();
+    ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(navOrigin.x,navOrigin.y+IndicatorY),ImVec2(navOrigin.x+2,navOrigin.y+IndicatorY+18),Color(Accent()),1);
+    ImGui::SetCursorPosY((std::max)(ImGui::GetCursorPosY()+16,height-194));
+    ImGui::Separator();ImGui::TextDisabled("%s",standalone?"Preview only":"INSERT / menu");
+    if(ImGui::Button(standalone?"Close preview":"Detach",ImVec2(-1,30))) {
+        if(standalone) {*running=false;*open=false;}else ImGui::OpenPopup("Detach Fusion?");
+    }
     if(ImGui::BeginPopupModal("Detach Fusion?",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("Unload Fusion from this game session?");
-        if(ImGui::Button("Detach now")) { *running=false; *open=false; ImGui::CloseCurrentPopup(); }
-        ImGui::SameLine(); if(ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
-        ImGui::EndPopup();
+        if(ImGui::Button("Detach now")) {*running=false;*open=false;ImGui::CloseCurrentPopup();}
+        ImGui::SameLine();if(ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();ImGui::EndPopup();
     }
     ImGui::EndChild();
-    const char* titles[]={"Aim Assist","Visuals","Velocity","Profiles","Settings"};
-    const char* subtitles[]={"Precision, configured your way.","A clearer view of your world.","Movement controls, in one place.","Keep your favorite configurations.","Make Fusion feel like yours."};
-    const float contentX=sidebar+20;
-    ImGui::SetCursorPos(ImVec2(contentX,87)); ImGui::TextUnformatted(titles[page]);
-    ImGui::SetCursorPos(ImVec2(contentX,112)); ImGui::TextDisabled("%s",subtitles[page]);
-    const bool rail=!compact && page<3;
-    const float railWidth=224;
-    const float mainWidth=width-contentX-20-(rail?railWidth+16:0);
-    ImGui::SetCursorPos(ImVec2(contentX,148));
-    ImGui::BeginChild("##settingsPanel",ImVec2(mainWidth,height-168),true);
-    switch(page) { case 0:Aim();break; case 1:Visuals();break; case 2:Velocity();break; case 3:profiles();break; case 4:preferences();break; }
+    const char* titles[]={"Aim Assist","Visuals","Velocity","Profiles","Appearance","Modules"};
+    const char* descriptions[]={"COMBAT / AIM ASSIST","RENDER / PLAYER DISPLAY","MOVEMENT / JUMP RESET","WORKSPACE / PROFILES","WORKSPACE / PERSONALIZATION","WORKSPACE / MODULE LIBRARY"};
+    ImGui::SetCursorPos(ImVec2(contentX,83));ImGui::TextDisabled("%s",descriptions[page]);
+    ImGui::SetCursorPos(ImVec2(contentX,106));
+    if(HeadingFont) ImGui::PushFont(HeadingFont);
+    ImGui::TextUnformatted(titles[page]);if(HeadingFont) ImGui::PopFont();
+    const float mainWidth=width-contentX-20-(rail?240.f:0);
+    ImGui::SetCursorPos(ImVec2(contentX,146));
+    const float scene=Progress(PageStart,.26f);
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha,ImGui::GetStyle().Alpha*(.40f+.60f*scene));
+    ImGui::SetCursorPosY(146+(ReducedMotion?0:5*(1-scene)));
+    ImGui::BeginChild("##settingsPanel",ImVec2(mainWidth,height-166-(ReducedMotion?0:5*(1-scene))),true);
+    switch(page) {case 0:Aim();break;case 1:Visuals();break;case 2:Velocity();break;case 3:profiles();break;case 4:preferences();break;case 5:Dashboard();break;}
     ImGui::EndChild();
+    ImGui::PopStyleVar();
     if(rail) {
-        ImGui::SetCursorPos(ImVec2(contentX+mainWidth+16,148));
-        ImGui::BeginChild("##context",ImVec2(railWidth,height-168),true);
-        Preview(); Section("SESSION");
+        ImGui::SetCursorPos(ImVec2(contentX+mainWidth+16,146));
+        ImGui::BeginChild("##context",ImVec2(224,height-166),true);
+        Preview();Section("WORKSPACE");
         int active=int(settings::AA_Enabled)+int(settings::ESP_Enabled)+int(settings::Velocity_Enabled);
-        ImGui::TextUnformatted("Modules enabled"); ImGui::TextColored(Accent(),"%d / 3",active);
-        ImGui::TextUnformatted("Friends"); ImGui::TextColored(Accent(),"%d",int(settings::friends.size()));
-        Section("QUICK TIP");
-        ImGui::TextWrapped("Scroll to see all settings. Changes apply immediately. Save a profile to keep them.");
-        ImGui::EndChild();
+        ImGui::Text("Enabled: %d / 3",active);ImGui::Text("Friends: %d",int(settings::friends.size()));
+        ImGui::TextWrapped("%s",standalone?"Local preview. No game is connected.":"Save a profile to keep your settings.");ImGui::EndChild();
     }
-    ImGui::End();
+    ImGui::End();ImGui::PopStyleVar();
 }
 }
