@@ -305,8 +305,8 @@ int SelfTest() {
             }
         }
     }
-    // Exercise the actual dashboard switch at its current layout position.
-    // Read the ImGui item rectangle instead of hard-coding screen coordinates.
+    // Exercise the dashboard toggle using ImGui's actual item rectangle.
+    // Child window names are scoped and cannot be looked up as "##card" alone.
     io.DisplaySize=ImVec2(1280,800);FusionGui::page=5;FusionGui::ModuleFilter=0;
     FusionGui::Search[0]=0;settings::AA_Enabled=false;
     ImVec2 toggleCenter(-1,-1);
@@ -318,13 +318,28 @@ int SelfTest() {
         }
         ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);
         if(frame==0) {
-            ImGuiWindow* card=ImGui::FindWindowByName("##card");
-            Check(card!=nullptr,"Dashboard card was not rendered");
-            // The first card toggle is 33x18 at local (width-49,16).
-            // Prefer its actual rendered location to the previous fixed screen point.
-            const float available=(std::min)(1120.f,io.DisplaySize.x-24.f)-292.f-20.f-40.f;
-            const float cardWidth=(available-22.f)*.5f;
-            toggleCenter=ImVec2(card->Pos.x+cardWidth-49.f+16.5f,card->Pos.y+25.f);
+            // Find the interactive toggle by its scoped ImGui ID and item bounds.
+            bool found=false;
+            for(ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
+                if(!window || std::string(window->Name).find("##card")==std::string::npos) continue;
+                const ImGuiID id=window->GetID("##enabled");
+                if(window->DC.LastItemId==id) {
+                    const ImRect rect=window->DC.LastItemRect;
+                    toggleCenter=ImVec2((rect.Min.x+rect.Max.x)*.5f,(rect.Min.y+rect.Max.y)*.5f);
+                    found=true;break;
+                }
+            }
+            // The last item in the card is its favorite button, so locate the
+            // switch from the first card's actual window bounds instead.
+            if(!found) {
+                for(ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
+                    if(!window || std::string(window->Name).find("##card")==std::string::npos) continue;
+                    if(window->Size.x<100 || window->Size.y<100) continue;
+                    toggleCenter=ImVec2(window->Pos.x+window->Size.x-32.5f,window->Pos.y+25.f);
+                    found=true;break;
+                }
+            }
+            Check(found,"Dashboard card was not rendered");
         }
         ImGui::Render();
     }
