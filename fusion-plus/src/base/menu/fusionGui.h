@@ -6,7 +6,7 @@
 
 // Shared by the injected menu and the standalone, non-injecting visual preview.
 namespace FusionGui {
-inline int page = 0;
+inline int page = 5;
 inline ImVec4 Accent() { return ImVec4(settings::Menu_AccentColor[0], settings::Menu_AccentColor[1], settings::Menu_AccentColor[2], 1); }
 inline ImU32 Color(ImVec4 c) { return ImGui::ColorConvertFloat4ToU32(c); }
 inline void Theme() {
@@ -191,6 +191,71 @@ inline void Preview() {
         d->AddCircleFilled(ImVec2(cx,cy),3,IM_COL32(230,229,250,255));
     }
 }
+
+inline bool DashboardCard(const char* id, const char* title, const char* description,
+                          const char* glyph, bool enabled, float width, int destination) {
+    ImGui::PushID(id);
+    const ImVec2 start = ImGui::GetCursorScreenPos();
+    const ImVec2 size(width, 146.f);
+    const bool clicked = ImGui::InvisibleButton("##card", size);
+    const bool hovered = ImGui::IsItemHovered();
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(start, ImVec2(start.x + size.x, start.y + size.y),
+                        hovered ? IM_COL32(29,32,32,255) : IM_COL32(23,23,26,255), 9.f);
+    draw->AddRect(start, ImVec2(start.x + size.x, start.y + size.y),
+                  enabled ? Color(ImVec4(Accent().x,Accent().y,Accent().z, hovered ? .95f : .65f))
+                          : IM_COL32(57,55,61,255), 9.f, 0, 1.2f);
+    draw->AddText(ImVec2(start.x+20,start.y+18),Color(Accent()),glyph);
+    draw->AddText(ImVec2(start.x+20,start.y+52),IM_COL32(245,245,245,255),title);
+    draw->AddText(ImVec2(start.x+20,start.y+78),IM_COL32(156,153,160,255),description);
+    const char* status = enabled ? "ACTIVE" : "INACTIVE";
+    draw->AddText(ImVec2(start.x+20,start.y+114),
+                  enabled ? Color(Accent()) : IM_COL32(126,125,131,255),status);
+    draw->AddText(ImVec2(start.x+size.x-65,start.y+114),
+                  IM_COL32(147,145,151,255),"OPEN >");
+    ImGui::PopID();
+    if (clicked) page = destination;
+    return clicked;
+}
+inline void Dashboard() {
+    ImGui::TextDisabled("LIBRARY  /  ALL MODULES");
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Your workspace");
+    ImGui::Spacing();
+    static char query[96] = "";
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##search", "Search modules...", query, IM_ARRAYSIZE(query));
+    ImGui::Spacing();
+    const float avail = ImGui::GetContentRegionAvail().x;
+    const bool twoCols = avail > 510.f;
+    const float cardWidth = twoCols ? (avail - 14.f) * .5f : avail;
+    const auto matches = [&](const char* name) {
+        if (!query[0]) return true;
+        // Simple ASCII case-insensitive substring for the existing English labels.
+        for (const char* p = name; *p; ++p) {
+            const char* a = p;
+            const char* b = query;
+            while (*a && *b && ((*a >= 'A' && *a <= 'Z' ? *a + 32 : *a) ==
+                                (*b >= 'A' && *b <= 'Z' ? *b + 32 : *b))) { ++a; ++b; }
+            if (!*b) return true;
+        }
+        return false;
+    };
+    int shown = 0;
+    const auto card = [&](const char* id, const char* title, const char* desc,
+                          const char* symbol, bool enabled, int destination) {
+        if (!matches(title)) return;
+        if (twoCols && shown % 2 == 1) ImGui::SameLine(0.f,14.f);
+        DashboardCard(id,title,desc,symbol,enabled,cardWidth,destination);
+        ++shown;
+    };
+    card("aim","Aim Assist","Precision settings", "+",settings::AA_Enabled,0);
+    card("visual","Visuals","Display and colors", "o",settings::ESP_Enabled,1);
+    card("velocity","Velocity","Movement settings", ">",settings::Velocity_Enabled,2);
+    if (!shown) ImGui::TextDisabled("No modules found.");
+    ImGui::Spacing();
+    ImGui::TextDisabled("Select a card to open its existing settings.");
+}
 // Callback functions keep filesystem operations out of the presentation layer.
 inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* running) {
     Theme();
@@ -211,7 +276,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     draw->AddRectFilled(ImVec2(origin.x+1,origin.y+1),ImVec2(origin.x+width-1,origin.y+70),IM_COL32(19,18,22,255),14,ImDrawFlags_RoundCornersTop);
     draw->AddLine(ImVec2(origin.x+18,origin.y+70),ImVec2(origin.x+width-18,origin.y+70),IM_COL32(43,41,46,255));
     draw->AddCircle(ImVec2(origin.x+31,origin.y+33),13,Color(Accent()),6,2);
-    draw->AddText(ImVec2(origin.x+56,origin.y+18),IM_COL32(242,241,255,255),"F U S I O N +");
+    draw->AddText(ImVec2(origin.x+56,origin.y+18),IM_COL32(242,241,255,255),"FUSION  Studio");
     draw->AddText(ImVec2(origin.x+56,origin.y+41),IM_COL32(151,148,155,255),"YOUR CONFIG. YOUR STYLE.");
     ImGui::SetCursorPos(ImVec2(width-116,23));
     ImGui::TextDisabled("v0.0.4"); ImGui::SameLine();
@@ -220,6 +285,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     ImGui::SetCursorPos(ImVec2(14,86));
     ImGui::BeginChild("##navigation",ImVec2(sidebar-14,height-104),false,ImGuiWindowFlags_NoScrollbar);
     ImGui::TextDisabled("  WORKSPACE"); ImGui::Spacing();
+    Nav("Modules",5); ImGui::Spacing();
     Nav("Aim Assist",0); Nav("Visuals",1); Nav("Velocity",2);
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
     Nav("Profiles",3); Nav("Settings",4);
@@ -235,17 +301,19 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
         ImGui::EndPopup();
     }
     ImGui::EndChild();
-    const char* titles[]={"Aim Assist","Visuals","Velocity","Profiles","Settings"};
-    const char* subtitles[]={"Precision, configured your way.","A clearer view of your world.","Movement controls, in one place.","Keep your favorite configurations.","Make Fusion feel like yours."};
+    const char* titles[]={"Aim Assist","Visuals","Velocity","Profiles","Settings","Modules"};
+    const char* subtitles[]={"Precision, configured your way.","A clearer view of your world.","Movement controls, in one place.","Keep your favorite configurations.","Make Fusion feel like yours.","Browse and customize your workspace."};
     const float contentX=sidebar+20;
-    ImGui::SetCursorPos(ImVec2(contentX,87)); ImGui::TextUnformatted(titles[page]);
+    ImGui::SetCursorPos(ImVec2(contentX,87));
+    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts.Size > 1 ? ImGui::GetIO().Fonts->Fonts[2] : ImGui::GetFont());
+    ImGui::TextUnformatted(titles[page]); ImGui::PopFont();
     ImGui::SetCursorPos(ImVec2(contentX,112)); ImGui::TextDisabled("%s",subtitles[page]);
     const bool rail=!compact && page<3;
     const float railWidth=224;
     const float mainWidth=width-contentX-20-(rail?railWidth+16:0);
     ImGui::SetCursorPos(ImVec2(contentX,148));
     ImGui::BeginChild("##settingsPanel",ImVec2(mainWidth,height-168),true);
-    switch(page) { case 0:Aim();break; case 1:Visuals();break; case 2:Velocity();break; case 3:profiles();break; case 4:preferences();break; }
+    switch(page) { case 0:Aim();break; case 1:Visuals();break; case 2:Velocity();break; case 3:profiles();break; case 4:preferences();break; case 5:Dashboard();break; }
     ImGui::EndChild();
     if(rail) {
         ImGui::SetCursorPos(ImVec2(contentX+mainWidth+16,148));
