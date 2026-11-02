@@ -305,13 +305,30 @@ int SelfTest() {
             }
         }
     }
-    // Run the actual switch with synthetic mouse events; no OS input is injected.
-    io.DisplaySize=ImVec2(1280,800);FusionGui::page=0;settings::AA_Enabled=false;
-    for(int frame=0;frame<4;frame++) {
-        io.AddMousePosEvent(1000,280);
-        if(frame==1) io.AddMouseButtonEvent(0,true);
-        if(frame==2) io.AddMouseButtonEvent(0,false);
-        ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);ImGui::Render();
+    // Exercise the dashboard toggle using ImGui's actual item rectangle.
+    // Child window names are scoped and cannot be looked up as "##card" alone.
+    io.DisplaySize=ImVec2(1280,800);FusionGui::page=5;FusionGui::ModuleFilter=0;
+    FusionGui::Search[0]=0;settings::AA_Enabled=false;
+    ImVec2 toggleCenter(-1,-1);
+    for(int frame=0;frame<5;frame++) {
+        if(frame>0) {
+            io.AddMousePosEvent(toggleCenter.x,toggleCenter.y);
+            if(frame==2) io.AddMouseButtonEvent(0,true);
+            if(frame==3) io.AddMouseButtonEvent(0,false);
+        }
+        ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);
+        if(frame==0) {
+            // Find the first visible module card using the scoped child-window name.
+            bool found=false;
+            for(ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
+                if(!window || std::string(window->Name).find("##card")==std::string::npos) continue;
+                if(window->Size.x<100 || window->Size.y<100) continue;
+                toggleCenter=ImVec2(window->Pos.x+window->Size.x-32.5f,window->Pos.y+25.f);
+                found=true;break;
+            }
+            Check(found,"Dashboard card was not rendered");
+        }
+        ImGui::Render();
     }
     Check(settings::AA_Enabled,"Toggle interaction failed");
     FusionGui::ModuleFilter=1;
