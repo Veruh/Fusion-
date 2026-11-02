@@ -149,6 +149,8 @@ void Menu::SetupImgui()
 	//Menu::Font = io.Fonts->AddFontFromMemoryTTF(jetbrainsmono, sizeof(jetbrainsmono), 16);
 	Menu::Font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 16);
 	Menu::FontBold = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeuib.ttf", 24);
+    if (!Menu::Font) Menu::Font = io.Fonts->Fonts[0];
+    if (!Menu::FontBold) Menu::FontBold = Menu::Font;
 
 	ImVec4* colors = ImGui::GetStyle().Colors;
 	colors[ImGuiCol_Text] = ImVec4(1.f, 1.f, 1.f, 1.00f);

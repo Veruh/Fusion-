@@ -7,7 +7,7 @@ struct settings {
 	inline static std::vector<std::string> friends;
 
 	// Menu
-	inline static float Menu_AccentColor[4]{ 0, 0.4f, 0.4f, 1.0f };
+	inline static float Menu_AccentColor[4]{ 0.55f, 0.36f, 1.0f, 1.0f };
 	inline static bool Menu_GUIMovement = false;
 	inline static bool Menu_Watermark = true;
 	inline static bool Menu_DisableAllRendering = false;
@@ -69,8 +69,9 @@ struct settings {
 	// Velocity
 	inline static bool Velocity_Enabled = false;
 	inline static int Velocity_Mode = 0;
-	inline static const char* Velocity_ModeList[0]{ "Jump Reset" };
+	inline static const char* Velocity_ModeList[1]{ "Jump Reset" };
 	inline static float Velocity_JRReactionTime = 0.1f;
 	inline static int Velocity_JRChange = 80;
 
 };
+
