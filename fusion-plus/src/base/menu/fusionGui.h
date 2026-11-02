@@ -305,7 +305,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     const char* subtitles[]={"Precision, configured your way.","A clearer view of your world.","Movement controls, in one place.","Keep your favorite configurations.","Make Fusion feel like yours.","Browse and customize your workspace."};
     const float contentX=sidebar+20;
     ImGui::SetCursorPos(ImVec2(contentX,87));
-    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts.Size > 1 ? ImGui::GetIO().Fonts->Fonts[2] : ImGui::GetFont());
+    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts.Size > 2 ? ImGui::GetIO().Fonts->Fonts[2] : ImGui::GetFont());
     ImGui::TextUnformatted(titles[page]); ImGui::PopFont();
     ImGui::SetCursorPos(ImVec2(contentX,112)); ImGui::TextDisabled("%s",subtitles[page]);
     const bool rail=!compact && page<3;
