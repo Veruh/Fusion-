@@ -1,311 +1,79 @@
 #include "menu.h"
+#include "fusionGui.h"
 #include "../../main.h"
-
-#include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
-#include "imgui/imgui_impl_win32.h"
-#include "imgui/imgui_impl_opengl2.h"
-
-#include "util/window/borderless.h"
-
-#include "moduleManager/moduleManager.h"
-
-#include "sdk/net/minecraft/client/Minecraft.h"
-#include "util/logger.h"
-#include "menu/menu.h"
+#include "base.h"
 #include "configManager/configManager.h"
+#include <cstdio>
+#include <exception>
 
-#include "notificationManager/notificationManager.h"
-
-int currentTab = -1;
-std::unique_ptr<std::once_flag> setConfigName = std::make_unique<std::once_flag>();
-
-static void RenderConfigMenu()
-{
-	ImGui::Spacing();
-
-	// list of the config files that are selectable
-	static std::vector<std::string> configFiles = ConfigManager::GetConfigList();
-	static int selectedConfig = 0;
-
-	if (ImGui::BeginChild("##configList", ImVec2(450, 232), false))
-	{
-		for (int i = 0; i < configFiles.size(); ++i)
-		{
-			if (ImGui::Selectable(configFiles[i].c_str()))
-			{
-				selectedConfig = i;
-				setConfigName = std::make_unique<std::once_flag>();
-			}
-		}
-	}
-	ImGui::EndChild();
-
-	std::string selectedConfigName = configFiles.size() > 0 ? configFiles[selectedConfig] : "null";
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20.f, 5.f));
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.f);
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
-	// buttons to load config
-	if (ImGui::Button(("Load \"" + selectedConfigName + "\"").c_str(), ImVec2(247, 26)))
-	{
-		if (configFiles.size() > 0)
-		{
-			if (ConfigManager::LoadConfig(selectedConfigName.c_str()))
-			{
-				NotificationManager::Send("Fusion+ :: Config", "Config \"%s\" has been loaded.", selectedConfigName.c_str());
-			}
-			else
-			{
-				NotificationManager::Send("Fusion+ :: Config", "Config \"%s\" could not be loaded.", selectedConfigName.c_str());
-			}
-		}
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Open Folder"))
-	{
-		ShellExecuteA(NULL, "open", ConfigManager::GetDocumentsPath().c_str(), NULL, NULL, SW_SHOWNORMAL);
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Refresh"))
-	{
-		configFiles = ConfigManager::GetConfigList();
-		NotificationManager::Send("Fusion+ :: Config", "Config list has been refreshed.");
-	}
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleVar();
-	ImGui::PopStyleVar();
-
-	ImGui::Separator();
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3);
-
-	// input box to save config
-	static char saveConfigName[128] = "";
-	std::call_once(*setConfigName, []() {
-		const char* selectedConfigNameC = configFiles.size() > 0 ? configFiles[selectedConfig].c_str() : "";
-		strcpy_s(saveConfigName, selectedConfigNameC);
-		});
-
-	// set width of input box
-	ImGui::SetNextItemWidth(614);
-	// set input box height
-	ImGui::InputText("##saveConfigName", saveConfigName, IM_ARRAYSIZE(saveConfigName));
-
-	ImGui::SameLine();
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20.f, 4.f));
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
-	if (ImGui::Button("Save", ImVec2(65.f, 22.f)) && saveConfigName != "")
-	{
-		int result = ConfigManager::SaveConfig(saveConfigName);
-		if (result != -1)
-		{
-			configFiles = ConfigManager::GetConfigList();
-			selectedConfig = result;
-			NotificationManager::Send("Fusion+ :: Config", "Config \"%s\" has been saved.", saveConfigName);
-		}
-		else
-		{
-			NotificationManager::Send("Fusion+ :: Config", "Config \"%s\" could not be saved.", saveConfigName);
-		}
-	}
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleVar();
-	ImGui::PopStyleVar();
+namespace {
+std::string message;
+void Profiles() {
+    static std::vector<std::string> files;
+    static bool loaded=false;
+    static std::string selected;
+    static char name[128]="";
+    try {
+        if(!loaded) { files=ConfigManager::GetConfigList(); loaded=true; }
+        FusionGui::Section("SAVED PROFILES");
+        if(ImGui::Button("Refresh list")) files=ConfigManager::GetConfigList();
+        if(files.empty()) ImGui::TextDisabled("No profiles yet. Save one below.");
+        if(ImGui::BeginChild("##profiles",ImVec2(0,150),true)) {
+            for(const auto& file:files) if(ImGui::Selectable(file.c_str(),selected==file)) {
+                selected=file;
+                std::snprintf(name,sizeof(name),"%s",file.c_str());
+            }
+        }
+        ImGui::EndChild();
+        ImGui::BeginDisabled(selected.empty());
+        if(ImGui::Button("Load selected",ImVec2(-1,34))) message=ConfigManager::LoadConfig(selected.c_str())?"Profile loaded.":"Could not load this profile.";
+        ImGui::EndDisabled();
+        FusionGui::Section("SAVE CURRENT SETTINGS");
+        ImGui::SetNextItemWidth(-1);
+        ImGui::InputTextWithHint("##profileName","Profile name",name,sizeof(name));
+        // Keep profile names inside the configuration directory.
+        const std::string text(name);
+        bool valid=!text.empty() && text!="." && text!=".." && text.find_first_of("<>:\"/\\|?*")==std::string::npos && text.back()!='.' && text.back()!=' ';
+        ImGui::BeginDisabled(!valid);
+        if(ImGui::Button("Save profile",ImVec2(-1,34))) {
+            if(ConfigManager::SaveConfig(name)>=0) { files=ConfigManager::GetConfigList(); selected=name; message="Profile saved."; }
+            else message="Could not save profile.";
+        }
+        ImGui::EndDisabled();
+        if(!valid && !text.empty()) ImGui::TextWrapped("Use a name without path separators or special filename characters.");
+    } catch(const std::exception&) { message="Invalid profile or filesystem error. Existing settings may have been partially loaded."; }
+    if(!message.empty()) { ImGui::Spacing(); ImGui::TextWrapped("%s",message.c_str()); }
 }
-
-static void RenderSettingsMenu()
-{
-	ImGui::Spacing();
-
-	ImGui::SeparatorText("Friends List");
-
-	int height = min(3 , settings::friends.size() > 0 ? settings::friends.size() : 1);
-	static int friendIndex = -1;
-	if (ImGui::BeginChild("##friendslist", ImVec2(450.f, ImGui::GetTextLineHeightWithSpacing() * height), false))
-	{
-		for (int i = 0; i < settings::friends.size(); ++i)
-		{
-			ImGui::Selectable(settings::friends[i].c_str());
-			// if right clicked on a friend, show popup to remove friend
-			if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-			{
-				friendIndex = i;
-				ImGui::OpenPopup("##removeFriend");
-			}
-		}
-	}
-	if (ImGui::BeginPopup("##removeFriend"))
-	{
-		if (ImGui::Button(("Remove \"" + settings::friends[friendIndex] + "\"").c_str()))
-		{
-			const char* friendName = settings::friends[friendIndex].c_str();
-			if (ConfigManager::RemoveFriend(settings::friends[friendIndex]))
-			{
-				friendIndex = -1;
-				ImGui::CloseCurrentPopup();
-				NotificationManager::Send("Fusion+ :: Friends", "Friend \"%s\" has been removed from your friends list.", friendName);
-			}
-		}
-		ImGui::EndPopup();
-	}
-	ImGui::EndChild();
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.f);
-
-	// input box to save config
-	static char friendName[128] = "";
-	// set width of input box
-	ImGui::SetNextItemWidth(614.f);
-	// set input box height
-	ImGui::InputText("##addFriend", friendName, IM_ARRAYSIZE(friendName));
-
-	ImGui::SameLine();
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20.f, 4.f));
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
-	if (ImGui::Button("Add", ImVec2(65, 22)) && friendName != "")
-	{
-		ConfigManager::AddFriend(friendName);
-		NotificationManager::Send("Fusion+ :: Friends", "Friend \"%s\" has been added to your friends list.", std::string(friendName).c_str());
-
-		friendName[0] = '\0';
-	}
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleVar();
-	ImGui::PopStyleVar();
-
-	ImGui::SeparatorText("Menu Settings");
-
-	Menu::ColorPicker(1001, "Menu Accent Color", ImVec2(374.f, 0.f), settings::Menu_AccentColor);
-	Menu::ToggleButton(1002, "GUI Movement", ImVec2(368.f, 0.f), &settings::Menu_GUIMovement);
-	Menu::ToggleButton(1003, "Show Hidden Categories", ImVec2(368.f, 0.f), &settings::Menu_ShowHiddenCategories);
-
-	ImGui::SeparatorText("Rendering Settings");
-
-	Menu::ToggleButton(1004, "Show Watermark", ImVec2(368.f, 0.f), &settings::Menu_Watermark);
-	Menu::ToggleButton(1005, "Disable All Rendering", ImVec2(368.f, 0.f), &settings::Menu_DisableAllRendering);
+void Preferences() {
+    FusionGui::Section("APPEARANCE");
+    FusionGui::Picker("Accent color",settings::Menu_AccentColor);
+    FusionGui::Toggle("Move while menu is open",&settings::Menu_GUIMovement);
+    FusionGui::Toggle("Watermark",&settings::Menu_Watermark);
+    FusionGui::Toggle("Disable overlay rendering",&settings::Menu_DisableAllRendering);
+    ImGui::TextDisabled("Menu shortcut: INSERT");
+    FusionGui::Section("FRIENDS");
+    ImGui::TextWrapped("Ignored by Aim Assist when its friend filter is enabled.");
+    static char name[128]="";
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##friend","Player name",name,sizeof(name));
+    if(ImGui::Button("Add friend",ImVec2(-1,32)) && name[0]) {
+        try { if(ConfigManager::AddFriend(name)) { name[0]=0; message="Friend saved."; } else message="Already listed or could not save."; }
+        catch(const std::exception&) { message="Could not save friends."; }
+    }
+    std::string remove;
+    for(const auto& friendName:settings::friends) {
+        ImGui::PushID(friendName.c_str());
+        if(ImGui::SmallButton("Remove")) remove=friendName;
+        ImGui::SameLine(); ImGui::TextUnformatted(friendName.c_str());
+        ImGui::PopID();
+    }
+    if(!remove.empty()) {
+        try { message=ConfigManager::RemoveFriend(remove)?"Friend removed.":"Could not save friends."; }
+        catch(const std::exception&) { message="Could not save friends."; }
+    }
+    if(!message.empty()) ImGui::TextWrapped("%s",message.c_str());
 }
-
-void Menu::RenderMenu()
-{
-	ImGui::SetNextWindowSize(ImVec2(575.f, 300.f));
-	ImGui::Begin(Menu::Title.c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-	ImVec2 idk = ImGui::GetWindowSize();
-
-	int buttonAmount = 6;
-	int buttonHeight = 20;
-	ImGui::Columns(2, "stuff");
-	float columnWidth = 110;
-	ImGui::SetColumnWidth(0, columnWidth);
-	//ImGui::GetWindowDrawList()->AddText(Menu::Font, distTextSize, ImVec2(posX, posY), ImColor();
-	ImVec2 windowPos = ImGui::GetWindowPos();
-	ImVec2 textSize = Menu::FontBold->CalcTextSizeA(28, FLT_MAX, 0.0f, "FUSION+");
-	float posX = windowPos.x + (columnWidth / 2) - (textSize.x / 2);
-	float posY = windowPos.y + 15;
-
-	Menu::GlitchText("FUSION+", ImVec2(posX, posY));
-	ImGui::SetCursorPosY(textSize.y + 30.f);
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3);
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.f));
-	if (ImGui::BeginChild("child_1", { 0.f, 140.f }, false, ImGuiWindowFlags_NoScrollbar)) {
-		std::vector<std::string> categories = g_ModuleManager->GetCategories();
-		for (int i = 0; i < categories.size(); i++)
-		{
-			if (std::find(settings::Menu_HiddenCategoriesList.begin(), settings::Menu_HiddenCategoriesList.end(), categories[i]) != settings::Menu_HiddenCategoriesList.end() && !settings::Menu_ShowHiddenCategories)
-					continue;
-
-			ImGui::PushStyleColor(ImGuiCol_Button, currentTab == i ? ImVec4(0.4f, 0.4f, 0.4f, 1.f) : ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
-			if (ImGui::Button((categories[i]).c_str(), ImVec2(94.f, 35.f)))
-			{
-				currentTab = i;
-			}
-			ImGui::PopStyleColor();
-		}
-	}
-	ImGui::EndChild();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleVar();
-
-	ImGui::BeginChild("seperatorchild", { 0.f, 1.f }, false);
-	ImGui::Separator();
-	ImGui::EndChild();
-
-	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 1);
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20.f, 5.f));
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.f);
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 1.f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 1.f));
-
-	ImGui::PushStyleColor(ImGuiCol_Button, currentTab == -3 ? ImVec4(0.4f, 0.4f, 0.4f, 1.f) : ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
-	if (ImGui::Button("Settings", ImVec2(94.f, 0.f)))
-	{
-		currentTab = -3;
-	}
-	ImGui::PopStyleColor();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, currentTab == -2 ? ImVec4(0.4f, 0.4f, 0.4f, 1.f) : ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
-	if (ImGui::Button("Config", ImVec2(94.f, 0.f)))
-	{
-		currentTab = -2;
-	}
-	ImGui::PopStyleColor();
-
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.64f, 0.2f, 0.2f, 0.5f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.74, 0.4f, 0.4f, 1.f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.f, 0.4f, 0.4f, 1.f));
-
-	if (ImGui::Button("Detach", ImVec2(94.f, 0.f)))
-	{
-		Menu::MoveCursorToCenter(true);
-		Base::Running = false;
-	}
-
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleVar();
-	ImGui::PopStyleVar();
-
-	ImGui::InvisibleButton("##", ImVec2(1, idk.y));
-	ImGui::NextColumn();
-
-	if (ImGui::BeginChild("child_2", { 0, 0 }, false)) {
-		g_ModuleManager->RenderMenu(currentTab);
-
-		if (currentTab == -2)
-		{
-			RenderConfigMenu();
-		}
-
-		if (currentTab == -3)
-		{
-			RenderSettingsMenu();
-		}
-
-		ImGui::Spacing();
-	}
-	ImGui::EndChild();
-
-	ImGui::End();
+}
+void Menu::RenderMenu() {
+    FusionGui::Render(Profiles,Preferences,&Menu::Open,&Base::Running);
 }
