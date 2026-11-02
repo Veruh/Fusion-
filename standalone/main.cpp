@@ -318,26 +318,13 @@ int SelfTest() {
         }
         ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);
         if(frame==0) {
-            // Find the interactive toggle by its scoped ImGui ID and item bounds.
+            // Find the first visible module card using the scoped child-window name.
             bool found=false;
             for(ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
                 if(!window || std::string(window->Name).find("##card")==std::string::npos) continue;
-                const ImGuiID id=window->GetID("##enabled");
-                if(window->DC.LastItemId==id) {
-                    const ImRect rect=window->DC.LastItemRect;
-                    toggleCenter=ImVec2((rect.Min.x+rect.Max.x)*.5f,(rect.Min.y+rect.Max.y)*.5f);
-                    found=true;break;
-                }
-            }
-            // The last item in the card is its favorite button, so locate the
-            // switch from the first card's actual window bounds instead.
-            if(!found) {
-                for(ImGuiWindow* window : ImGui::GetCurrentContext()->Windows) {
-                    if(!window || std::string(window->Name).find("##card")==std::string::npos) continue;
-                    if(window->Size.x<100 || window->Size.y<100) continue;
-                    toggleCenter=ImVec2(window->Pos.x+window->Size.x-32.5f,window->Pos.y+25.f);
-                    found=true;break;
-                }
+                if(window->Size.x<100 || window->Size.y<100) continue;
+                toggleCenter=ImVec2(window->Pos.x+window->Size.x-32.5f,window->Pos.y+25.f);
+                found=true;break;
             }
             Check(found,"Dashboard card was not rendered");
         }
