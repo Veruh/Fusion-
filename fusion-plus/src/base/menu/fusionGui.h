@@ -2,6 +2,7 @@
 #include "imgui/imgui.h"
 #include "configManager/settings.h"
 #include <algorithm>
+#include <cmath>
 
 // Shared by the injected menu and the standalone, non-injecting visual preview.
 namespace FusionGui {
@@ -10,37 +11,41 @@ inline ImVec4 Accent() { return ImVec4(settings::Menu_AccentColor[0], settings::
 inline ImU32 Color(ImVec4 c) { return ImGui::ColorConvertFloat4ToU32(c); }
 inline void Theme() {
     auto& s = ImGui::GetStyle();
-    s.WindowRounding = 14; s.ChildRounding = 10; s.FrameRounding = 6;
+    s.WindowRounding = 10; s.ChildRounding = 7; s.FrameRounding = 5;
     s.PopupRounding = 8; s.GrabRounding = 6; s.ScrollbarRounding = 6;
     s.WindowBorderSize = 1; s.ChildBorderSize = 1; s.FrameBorderSize = 0;
     s.WindowPadding = ImVec2(18,18); s.FramePadding = ImVec2(10,7);
     s.ItemSpacing = ImVec2(12,10); s.ItemInnerSpacing = ImVec2(8,6);
     s.ScrollbarSize = 9; s.GrabMinSize = 12;
     auto* c = s.Colors;
-    c[ImGuiCol_Text] = ImVec4(.91f,.92f,.98f,1);
-    c[ImGuiCol_TextDisabled] = ImVec4(.49f,.53f,.66f,1);
-    c[ImGuiCol_WindowBg] = ImVec4(.035f,.043f,.07f,.99f);
-    c[ImGuiCol_ChildBg] = ImVec4(.05f,.061f,.095f,1);
-    c[ImGuiCol_PopupBg] = ImVec4(.065f,.075f,.12f,1);
-    c[ImGuiCol_Border] = ImVec4(.15f,.18f,.29f,.8f);
-    c[ImGuiCol_FrameBg] = ImVec4(.09f,.105f,.165f,1);
-    c[ImGuiCol_FrameBgHovered] = ImVec4(.13f,.14f,.23f,1);
-    c[ImGuiCol_FrameBgActive] = ImVec4(.18f,.18f,.31f,1);
-    c[ImGuiCol_Button] = ImVec4(.105f,.115f,.19f,1);
-    c[ImGuiCol_ButtonHovered] = ImVec4(.20f,.18f,.35f,1);
+    c[ImGuiCol_Text] = ImVec4(.95f,.95f,.95f,1);
+    c[ImGuiCol_TextDisabled] = ImVec4(.59f,.58f,.61f,1);
+    c[ImGuiCol_WindowBg] = ImVec4(.047f,.047f,.055f,.99f);
+    c[ImGuiCol_ChildBg] = ImVec4(.085f,.078f,.090f,1);
+    c[ImGuiCol_PopupBg] = ImVec4(.10f,.095f,.11f,1);
+    c[ImGuiCol_Border] = ImVec4(.18f,.17f,.19f,.8f);
+    c[ImGuiCol_FrameBg] = ImVec4(.13f,.125f,.14f,1);
+    c[ImGuiCol_FrameBgHovered] = ImVec4(.17f,.16f,.18f,1);
+    c[ImGuiCol_FrameBgActive] = ImVec4(.19f,.19f,.21f,1);
+    c[ImGuiCol_Button] = ImVec4(.13f,.125f,.14f,1);
+    c[ImGuiCol_ButtonHovered] = ImVec4(.16f,.22f,.20f,1);
     c[ImGuiCol_ButtonActive] = Accent();
-    c[ImGuiCol_Header] = ImVec4(.18f,.14f,.34f,1);
-    c[ImGuiCol_HeaderHovered] = ImVec4(.22f,.18f,.40f,1);
+    c[ImGuiCol_Header] = ImVec4(.055f,.25f,.21f,1);
+    c[ImGuiCol_HeaderHovered] = ImVec4(.065f,.30f,.25f,1);
     c[ImGuiCol_HeaderActive] = Accent();
     c[ImGuiCol_SliderGrab] = c[ImGuiCol_SliderGrabActive] = c[ImGuiCol_CheckMark] = Accent();
-    c[ImGuiCol_Separator] = ImVec4(.15f,.18f,.29f,.8f);
+    c[ImGuiCol_Separator] = ImVec4(.18f,.17f,.19f,.8f);
     c[ImGuiCol_ScrollbarBg] = ImVec4(0,0,0,0);
-    c[ImGuiCol_ScrollbarGrab] = ImVec4(.22f,.24f,.36f,1);
+    c[ImGuiCol_ScrollbarGrab] = ImVec4(.26f,.25f,.27f,1);
     c[ImGuiCol_NavHighlight] = Accent();
 }
 inline void Section(const char* title) {
-    ImGui::Spacing(); ImGui::TextColored(ImVec4(.64f,.61f,.89f,1), "%s", title);
+    ImGui::Spacing(); ImGui::TextColored(ImVec4(.28f,.72f,.61f,1), "%s", title);
     ImGui::Separator(); ImGui::Spacing();
+}
+inline float Smooth(float current, float target, float dt, float speed = 14.f) {
+    const float blend = 1.f - expf(-speed * (std::min)(dt, .05f));
+    return current + (target - current) * blend;
 }
 inline void Toggle(const char* label, bool* value) {
     ImGui::PushID(label);
@@ -52,8 +57,16 @@ inline void Toggle(const char* label, bool* value) {
     if (ImGui::IsItemHovered()) d->AddRectFilled(p,ImVec2(p.x+w,p.y+32),IM_COL32(255,255,255,6),5);
     d->AddText(ImVec2(p.x,p.y+7),ImGui::GetColorU32(ImGuiCol_Text),label);
     const float x = p.x+w-42, y=p.y+5;
-    d->AddRectFilled(ImVec2(x,y),ImVec2(x+42,y+22),*value ? Color(Accent()) : IM_COL32(38,43,65,255),11);
-    d->AddCircleFilled(ImVec2(x+(*value?31:11),y+11),8, *value?IM_COL32(255,255,255,255):IM_COL32(134,142,167,255),20);
+    const ImGuiID id = ImGui::GetID("##toggle");
+    ImGuiStorage* storage = ImGui::GetStateStorage();
+    const float target = *value ? 1.f : 0.f;
+    float progress = storage->GetFloat(id, target);
+    progress = Smooth(progress, target, ImGui::GetIO().DeltaTime);
+    storage->SetFloat(id, progress);
+    const ImVec4 off(.17f,.16f,.18f,1.f), on = Accent();
+    const ImVec4 fill(off.x+(on.x-off.x)*progress,off.y+(on.y-off.y)*progress,off.z+(on.z-off.z)*progress,1.f);
+    d->AddRectFilled(ImVec2(x,y),ImVec2(x+42,y+22),Color(fill),11);
+    d->AddCircleFilled(ImVec2(x+11+20*progress,y+11),8,IM_COL32(242,244,242,255),20);
     ImGui::PopID();
 }
 inline void Float(const char* label,float* v,float lo,float hi,const char* format="%.1f") {
@@ -142,8 +155,8 @@ inline void Velocity() {
 }
 inline bool Nav(const char* label,int index) {
     const bool active=page==index;
-    ImGui::PushStyleColor(ImGuiCol_Button, active?ImVec4(.23f,.16f,.43f,1):ImVec4(0,0,0,0));
-    ImGui::PushStyleColor(ImGuiCol_Text,active?ImVec4(1,1,1,1):ImVec4(.60f,.63f,.75f,1));
+    ImGui::PushStyleColor(ImGuiCol_Button, active?ImVec4(.055f,.20f,.17f,1):ImVec4(0,0,0,0));
+    ImGui::PushStyleColor(ImGuiCol_Text,active?ImVec4(1,1,1,1):ImVec4(.61f,.60f,.63f,1));
     bool clicked=ImGui::Button(label,ImVec2(-1,42));
     if(active) { auto p=ImGui::GetItemRectMin(); ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(p.x,p.y+9),ImVec2(p.x+3,p.y+33),Color(Accent()),2); }
     ImGui::PopStyleColor(2);
@@ -157,10 +170,10 @@ inline void Preview() {
     const float width=ImGui::GetContentRegionAvail().x;
     ImGui::Dummy(ImVec2(width,196));
     auto* d=ImGui::GetWindowDrawList();
-    d->AddRectFilled(p,ImVec2(p.x+width,p.y+196),IM_COL32(12,17,28,255),8);
+    d->AddRectFilled(p,ImVec2(p.x+width,p.y+196),IM_COL32(20,19,23,255),8);
     float cx=p.x+width*.5f, cy=p.y+96;
     const auto a=Color(Accent());
-    d->AddLine(ImVec2(p.x+15,p.y+171),ImVec2(p.x+width-15,p.y+171),IM_COL32(36,44,63,255));
+    d->AddLine(ImVec2(p.x+15,p.y+171),ImVec2(p.x+width-15,p.y+171),IM_COL32(49,46,52,255));
     d->AddRectFilled(ImVec2(cx-15,cy-45),ImVec2(cx+15,cy-15),IM_COL32(116,109,155,255),3);
     d->AddRectFilled(ImVec2(cx-20,cy-10),ImVec2(cx+20,cy+34),IM_COL32(70,62,111,255),3);
     d->AddRectFilled(ImVec2(cx-20,cy+38),ImVec2(cx-3,cy+68),IM_COL32(56,57,82,255),2);
@@ -195,11 +208,11 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     ImGui::PopStyleVar();
     if(!visible) { ImGui::End(); return; }
     auto origin=ImGui::GetWindowPos(); auto* draw=ImGui::GetWindowDrawList();
-    draw->AddRectFilled(ImVec2(origin.x+1,origin.y+1),ImVec2(origin.x+width-1,origin.y+70),IM_COL32(14,17,29,255),14,ImDrawFlags_RoundCornersTop);
-    draw->AddLine(ImVec2(origin.x+18,origin.y+70),ImVec2(origin.x+width-18,origin.y+70),IM_COL32(40,46,70,255));
+    draw->AddRectFilled(ImVec2(origin.x+1,origin.y+1),ImVec2(origin.x+width-1,origin.y+70),IM_COL32(19,18,22,255),14,ImDrawFlags_RoundCornersTop);
+    draw->AddLine(ImVec2(origin.x+18,origin.y+70),ImVec2(origin.x+width-18,origin.y+70),IM_COL32(43,41,46,255));
     draw->AddCircle(ImVec2(origin.x+31,origin.y+33),13,Color(Accent()),6,2);
     draw->AddText(ImVec2(origin.x+56,origin.y+18),IM_COL32(242,241,255,255),"F U S I O N +");
-    draw->AddText(ImVec2(origin.x+56,origin.y+41),IM_COL32(137,139,167,255),"YOUR CONFIG. YOUR STYLE.");
+    draw->AddText(ImVec2(origin.x+56,origin.y+41),IM_COL32(151,148,155,255),"YOUR CONFIG. YOUR STYLE.");
     ImGui::SetCursorPos(ImVec2(width-116,23));
     ImGui::TextDisabled("v0.0.4"); ImGui::SameLine();
     if(ImGui::SmallButton(" X ")) *open=false;
