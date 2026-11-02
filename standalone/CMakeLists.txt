@@ -12,7 +12,7 @@ add_executable(FusionStudio WIN32 main.cpp
   "${BASE}/ext/imgui/imgui_impl_win32.cpp"
   "${BASE}/ext/imgui/imgui_impl_opengl2.cpp")
 target_compile_features(FusionStudio PRIVATE cxx_std_20)
-target_compile_definitions(FusionStudio PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+target_compile_definitions(FusionStudio PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN IMGUI_IMPL_WIN32_DISABLE_GAMEPAD)
 target_include_directories(FusionStudio PRIVATE "${BASE}/ext" "${BASE}/src/base")
 target_link_libraries(FusionStudio PRIVATE opengl32 gdi32 user32 imm32 dwmapi shell32 ole32)
 if(MSVC)

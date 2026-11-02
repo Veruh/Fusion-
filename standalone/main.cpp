@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <ShlObj.h>
 #include <gl/GL.h>
+#include <dwmapi.h>
 #include <filesystem>
 #include <fstream>
 #include <algorithm>
@@ -19,6 +20,39 @@ std::filesystem::path profileRoot;
 std::string notice;
 std::string selected;
 bool open=true,running=true;
+
+// Commit a complete JSON file in the same directory without truncating the old one.
+void WriteJson(const std::filesystem::path& path,const nlohmann::json& data) {
+    const std::string bytes=data.dump(2);
+    auto temporary=path;temporary+=L"."+std::to_wstring(GetCurrentProcessId())+L".tmp";
+    HANDLE file=CreateFileW(temporary.c_str(),GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);
+    if(file==INVALID_HANDLE_VALUE) throw std::runtime_error("Could not create temporary settings file.");
+    DWORD written=0;
+    const bool complete=WriteFile(file,bytes.data(),DWORD(bytes.size()),&written,nullptr) && written==bytes.size() && FlushFileBuffers(file);
+    CloseHandle(file);
+    if(!complete || !MoveFileExW(temporary.c_str(),path.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)) {
+        DeleteFileW(temporary.c_str());throw std::runtime_error("Could not commit settings. Previous file was preserved.");
+    }
+}
+void SaveAppearance() {
+    nlohmann::json look;
+    look["accent"]=settings::Menu_AccentColor;look["preview"]=FusionGui::ShowPreview;
+    WriteJson(profileRoot.parent_path()/"appearance.json",look);
+}
+void LoadAppearance() {
+    // Appearance is independent of gameplay/profile values and persists on normal exit.
+    settings::Menu_AccentColor[0]=.23f;settings::Menu_AccentColor[1]=.77f;settings::Menu_AccentColor[2]=.62f;
+    auto path=profileRoot.parent_path()/"appearance.json";
+    if(!std::filesystem::exists(path)) return;
+    if(std::filesystem::file_size(path)>4096) throw std::runtime_error("Appearance file exceeds 4 KB.");
+    std::ifstream input(path);nlohmann::json look;input>>look;
+    const auto& color=look.at("accent");
+    if(!color.is_array() || color.size()!=4) throw std::runtime_error("Invalid accent color.");
+    auto values=color.get<std::array<float,4>>();
+    for(float v:values) if(!std::isfinite(v)||v<0||v>1) throw std::runtime_error("Invalid accent color.");
+    const bool preview=look.at("preview").get<bool>();
+    std::copy(values.begin(),values.end(),settings::Menu_AccentColor);FusionGui::ShowPreview=preview;
+}
 
 void Refresh(std::vector<std::string>& files) {
     files.clear();
@@ -61,10 +95,7 @@ void Profiles() {
         ImGui::BeginDisabled(!StudioProfiles::ValidName(name));
         if(ImGui::Button("Save profile",ImVec2(-1,34))) {
             const auto path=profileRoot/("profile-"+std::string(name)+".json");
-            std::ofstream output(path,std::ios::trunc);
-            if(!output) throw std::runtime_error("Could not create profile.");
-            output<<StudioProfiles::Encode().dump(2); output.close();
-            if(!output) throw std::runtime_error("Could not finish writing profile.");
+            WriteJson(path,StudioProfiles::Encode());
             selected=name;Refresh(files);notice="Profile saved.";
         }
         ImGui::EndDisabled();
@@ -73,8 +104,26 @@ void Profiles() {
     if(!notice.empty()) ImGui::TextWrapped("%s",notice.c_str());
 }
 void Preferences() {
-    FusionGui::Section("PREVIEW APPEARANCE");
-    FusionGui::Picker("Accent color",settings::Menu_AccentColor);
+    FusionGui::Section("ACCENT COLOR");
+    const char* names[]={"Mint","Violet","Blue","Amber","Rose"};
+    const ImVec4 presets[]={ImVec4(.23f,.77f,.62f,1),ImVec4(.60f,.43f,.98f,1),ImVec4(.32f,.62f,.96f,1),ImVec4(.96f,.70f,.28f,1),ImVec4(.96f,.43f,.57f,1)};
+    for(int i=0;i<5;i++) {
+        if(i) ImGui::SameLine();
+        if(ImGui::ColorButton(names[i],presets[i],ImGuiColorEditFlags_NoTooltip,ImVec2(30,24))) {
+            settings::Menu_AccentColor[0]=presets[i].x;settings::Menu_AccentColor[1]=presets[i].y;settings::Menu_AccentColor[2]=presets[i].z;
+        }
+        if(ImGui::IsItemHovered()) ImGui::SetTooltip("%s",names[i]);
+    }
+    ImGui::SetNextItemWidth(250);
+    ImGui::ColorEdit3("Custom accent",settings::Menu_AccentColor,ImGuiColorEditFlags_DisplayHex);
+    FusionGui::Toggle("Illustration panel on wide windows",&FusionGui::ShowPreview);
+    ImGui::TextDisabled("Segoe UI / charcoal theme");
+    if(ImGui::Button("Save appearance",ImVec2(-1,32))) {
+        try {SaveAppearance();notice="Appearance saved.";}catch(const std::exception& e) {notice=e.what();}
+    }
+    ImGui::TextWrapped("Your color is also saved when you close the preview normally.");
+    if(!notice.empty()) ImGui::TextWrapped("%s",notice.c_str());
+    FusionGui::Section("WORKSPACE");
     ImGui::TextWrapped("Module switches only update local values. This executable does not connect to Minecraft.");
     FusionGui::Section("FRIENDS");
     static char friendName[49]="";
@@ -106,6 +155,13 @@ int SelfTest() {
     auto bad=saved;bad["settings"]["AA_fov"]="wrong type";
     bool rejected=false;try {StudioProfiles::Decode(bad);}catch(const std::exception&) {rejected=true;}
     Check(rejected && StudioProfiles::Encode()==saved,"Malformed profile partially modified settings");
+    bad=saved;bad["settings"]["Menu_AccentColor"].push_back(.5f);
+    rejected=false;try {StudioProfiles::Decode(bad);}catch(const std::exception&) {rejected=true;}
+    Check(rejected && StudioProfiles::Encode()==saved,"Oversized color array accepted");
+    const auto testFile=std::filesystem::temp_directory_path()/("FusionStudio-selftest-"+std::to_string(GetCurrentProcessId())+"-"+std::to_string(GetTickCount64())+".json");
+    WriteJson(testFile,original);WriteJson(testFile,saved);
+    {std::ifstream input(testFile);nlohmann::json actual;input>>actual;Check(actual==saved,"Atomic profile replacement failed");}
+    Check(std::filesystem::remove(testFile),"Could not remove self-test file");
     StudioProfiles::Decode(original);
     ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
     io.Fonts->AddFontDefault();io.Fonts->Build();io.DeltaTime=1.f/60;
@@ -125,7 +181,7 @@ int SelfTest() {
     // Run the actual switch with synthetic mouse events; no OS input is injected.
     io.DisplaySize=ImVec2(1280,800);FusionGui::page=0;settings::AA_Enabled=false;
     for(int frame=0;frame<4;frame++) {
-        io.AddMousePosEvent(840,257);
+        io.AddMousePosEvent(1000,280);
         if(frame==1) io.AddMouseButtonEvent(0,true);
         if(frame==2) io.AddMouseButtonEvent(0,false);
         ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);ImGui::Render();
@@ -149,12 +205,14 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int) {
     if(FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData,0,nullptr,&folder))) return 1;
     profileRoot=std::filesystem::path(folder)/"FusionStudio"/"profiles";CoTaskMemFree(folder);
     try {std::filesystem::create_directories(profileRoot);}catch(...) {MessageBoxW(nullptr,L"Cannot create preview profile folder.",L"Fusion Studio",MB_ICONERROR);return 1;}
+    try {LoadAppearance();}catch(const std::exception& e) {notice=e.what();}
     ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSW wc{};wc.style=CS_OWNDC;wc.lpfnWndProc=WindowProc;wc.hInstance=instance;
     wc.hCursor=LoadCursor(nullptr,IDC_ARROW);wc.lpszClassName=L"FusionStudioWindow";
     if(!RegisterClassW(&wc)) return 1;
-    HWND hwnd=CreateWindowW(wc.lpszClassName,L"Fusion Studio - standalone GUI preview",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,1100,800,nullptr,nullptr,instance,nullptr);
+    HWND hwnd=CreateWindowW(wc.lpszClassName,L"Fusion Studio",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,920,720,nullptr,nullptr,instance,nullptr);
     if(!hwnd) {UnregisterClassW(wc.lpszClassName,instance);return 1;}
+    BOOL dark=TRUE;DwmSetWindowAttribute(hwnd,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
     HDC dc=GetDC(hwnd);PIXELFORMATDESCRIPTOR pfd{};pfd.nSize=sizeof(pfd);pfd.nVersion=1;
     pfd.dwFlags=PFD_DRAW_TO_WINDOW|PFD_SUPPORT_OPENGL|PFD_DOUBLEBUFFER;pfd.iPixelType=PFD_TYPE_RGBA;pfd.cColorBits=32;pfd.cAlphaBits=8;
     int pixel=ChoosePixelFormat(dc,&pfd);HGLRC gl=nullptr;
@@ -164,7 +222,19 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int) {
         if(gl) wglDeleteContext(gl);ReleaseDC(hwnd,dc);DestroyWindow(hwnd);UnregisterClassW(wc.lpszClassName,instance);return 1;
     }
     ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
-    ImFontConfig config{};config.SizePixels=16;io.Fonts->AddFontDefault(&config);
+    ImFontConfig config{};config.SizePixels=16;
+    ImFont* fallback=io.Fonts->AddFontDefault(&config);
+    wchar_t windowsFolder[MAX_PATH]{};
+    if(GetWindowsDirectoryW(windowsFolder,MAX_PATH)) {
+        const auto fonts=std::filesystem::path(windowsFolder)/"Fonts";
+        const auto regular=fonts/"segoeui.ttf",semibold=fonts/"seguisb.ttf";
+        if(std::filesystem::exists(regular)) io.FontDefault=io.Fonts->AddFontFromFileTTF(regular.string().c_str(),17);
+        if(std::filesystem::exists(semibold)) {
+            FusionGui::HeadingFont=io.Fonts->AddFontFromFileTTF(semibold.string().c_str(),22);
+            FusionGui::BrandFont=io.Fonts->AddFontFromFileTTF(semibold.string().c_str(),25);
+        }
+    }
+    if(!io.FontDefault) io.FontDefault=fallback;
     ImGui_ImplWin32_Init(hwnd);ImGui_ImplOpenGL2_Init();ShowWindow(hwnd,SW_SHOWDEFAULT);
     while(running && open) {
         MSG msg;while(PeekMessageW(&msg,nullptr,0,0,PM_REMOVE)) {TranslateMessage(&msg);DispatchMessageW(&msg);if(msg.message==WM_QUIT) running=false;}
@@ -172,10 +242,11 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR command,int) {
         if(IsIconic(hwnd)) {Sleep(50);continue;}
         ImGui_ImplOpenGL2_NewFrame();ImGui_ImplWin32_NewFrame();ImGui::NewFrame();
         FusionGui::Render(Profiles,Preferences,&open,&running,true);ImGui::Render();
-        glViewport(0,0,int(io.DisplaySize.x),int(io.DisplaySize.y));glClearColor(.025f,.03f,.05f,1);glClear(GL_COLOR_BUFFER_BIT);
+        glViewport(0,0,int(io.DisplaySize.x),int(io.DisplaySize.y));glClearColor(.047f,.051f,.055f,1);glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());SwapBuffers(dc);
         Sleep(16);
     }
+    try {SaveAppearance();}catch(const std::exception& e) {MessageBoxA(hwnd,e.what(),"Could not save appearance",MB_ICONWARNING);}
     ImGui_ImplOpenGL2_Shutdown();ImGui_ImplWin32_Shutdown();ImGui::DestroyContext();
     wglMakeCurrent(nullptr,nullptr);wglDeleteContext(gl);ReleaseDC(hwnd,dc);DestroyWindow(hwnd);UnregisterClassW(wc.lpszClassName,instance);
     return 0;
