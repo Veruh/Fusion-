@@ -261,7 +261,7 @@ inline void ModuleCard(int index,ImVec2 size) {
     const char* names[]={"Asistencia de apuntado","ESP","Velocidad"};
     const char* desc[]={"Precision y seguimiento del objetivo.","Visualizacion de jugadores y colores.","Controles de reinicio de salto."};
     ImFont* font=HeadingFont?HeadingFont:ImGui::GetFont();
-    d->AddText(font,17,ImVec2(p.x+21,p.y+76),Color(Palette::Text),names[index]);
+    d->AddText(font,19,ImVec2(p.x+21,p.y+76),Color(Palette::Text),names[index]);
     d->AddText(ImVec2(p.x+21,p.y+105),Color(Palette::Rgb(0xB8C8D8)),desc[index]);
     // Bottom row uses reserved width for status, preventing clipping.
     const float footY=size.y-43;
@@ -271,7 +271,17 @@ inline void ModuleCard(int index,ImVec2 size) {
     ImGui::PushStyleColor(ImGuiCol_Button,Palette::Rgb(0x1C2926));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered,Palette::Rgb(0x234638));
     ImGui::PushStyleColor(ImGuiCol_Text,Favorites[index]?Palette::Rgb(0x00FF88):Palette::Rgb(0xB8C8D8));
-    if(ImGui::SmallButton(Favorites[index]?"* Favorito##fav":"* Favorito##fav")) Favorites[index]=!Favorites[index];
+    if(ImGui::SmallButton("    Favorito##fav")) Favorites[index]=!Favorites[index];
+    const ImVec2 favMin=ImGui::GetItemRectMin();
+    const ImVec2 starCenter(favMin.x+12,favMin.y+ImGui::GetItemRectSize().y*.5f);
+    ImVec2 star[10];
+    for(int k=0;k<10;k++) {
+        const float angle=-1.5707963f+k*0.31415927f;
+        const float radius=(k%2==0)?7.f:3.2f;
+        star[k]=ImVec2(starCenter.x+std::cos(angle)*radius,starCenter.y+std::sin(angle)*radius);
+    }
+    const ImU32 starInk=Color(Palette::Rgb(Favorites[index]?0x00FF88:0xA7B8B1));
+    for(int k=0;k<10;k++) d->AddLine(star[k],star[(k+1)%10],starInk,1.5f);
     ImGui::PopStyleColor(3);
     const char* status=*enabled?"Activado":"Desactivado";
     const ImVec2 statusSize=ImGui::CalcTextSize(status);
@@ -322,7 +332,7 @@ inline void Dashboard() {
         ImGui::Spacing();ImGui::TextDisabled("No hay modulos para este filtro.");
         if(ModuleFilter==1) ImGui::TextWrapped("Marca un modulo como favorito desde Todos.");
     }
-    ImGui::Spacing();ImGui::TextDisabled("Vista previa local. Los controles solo modifican valores de demostracion.");
+    ImGui::Spacing();ImGui::TextDisabled("Vista previa local. Controles de demostracion.");
 }
 inline void Startup(float completed,const char* status,float alpha=1) {
     Theme();auto* d=ImGui::GetBackgroundDrawList();const auto display=ImGui::GetIO().DisplaySize;
@@ -454,7 +464,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     const float scene=Progress(PageStart,.26f);
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha,ImGui::GetStyle().Alpha*(.40f+.60f*scene));
     ImGui::SetCursorPosY(158+(ReducedMotion?0:5*(1-scene)));
-    ImGui::BeginChild("##settingsPanel",ImVec2(mainWidth,height-178-(ReducedMotion?0:5*(1-scene))),true);
+    ImGui::BeginChild("##settingsPanel",ImVec2(mainWidth,height-178-(ReducedMotion?0:5*(1-scene))),true,page==5?ImGuiWindowFlags_NoScrollbar:0);
     switch(page) {case 0:Aim();break;case 1:Visuals();break;case 2:Velocity();break;case 3:profiles();break;case 4:preferences();break;case 5:Dashboard();break;}
     ImGui::EndChild();
     ImGui::PopStyleVar();
