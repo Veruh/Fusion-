@@ -1,0 +1,35 @@
+name: Build standalone GUI
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'standalone/**'
+      - 'fusion-plus/src/base/menu/fusionGui.h'
+      - 'fusion-plus/src/base/configManager/settings.h'
+      - 'fusion-plus/ext/imgui/**'
+      - '.github/workflows/gui-preview.yml'
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure standalone only
+        run: cmake -S standalone -B standalone/build -A x64
+      - name: Compile preview
+        run: cmake --build standalone/build --config Release --parallel 2
+      - name: Test profiles and UI without injection
+        run: ctest --test-dir standalone/build -C Release --output-on-failure
+      - name: Record executable hash
+        shell: pwsh
+        run: Get-FileHash -LiteralPath standalone/build/Release/FusionStudio.exe -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FusionStudio-windows-x64
+          path: standalone/build/Release/FusionStudio.exe
+          if-no-files-found: error
+          retention-days: 7

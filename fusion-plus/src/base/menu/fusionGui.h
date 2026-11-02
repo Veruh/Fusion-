@@ -179,7 +179,7 @@ inline void Preview() {
     }
 }
 // Callback functions keep filesystem operations out of the presentation layer.
-inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* running) {
+inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* running,bool standalone=false) {
     Theme();
     ImGuiIO& io=ImGui::GetIO();
     const bool compact=io.DisplaySize.x<980;
@@ -199,7 +199,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     draw->AddLine(ImVec2(origin.x+18,origin.y+70),ImVec2(origin.x+width-18,origin.y+70),IM_COL32(40,46,70,255));
     draw->AddCircle(ImVec2(origin.x+31,origin.y+33),13,Color(Accent()),6,2);
     draw->AddText(ImVec2(origin.x+56,origin.y+18),IM_COL32(242,241,255,255),"F U S I O N +");
-    draw->AddText(ImVec2(origin.x+56,origin.y+41),IM_COL32(137,139,167,255),"YOUR CONFIG. YOUR STYLE.");
+    draw->AddText(ImVec2(origin.x+56,origin.y+41),IM_COL32(137,139,167,255),standalone?"STANDALONE PREVIEW / NO GAME CONNECTED":"YOUR CONFIG. YOUR STYLE.");
     ImGui::SetCursorPos(ImVec2(width-116,23));
     ImGui::TextDisabled("v0.0.4"); ImGui::SameLine();
     if(ImGui::SmallButton(" X ")) *open=false;
@@ -211,9 +211,12 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
     Nav("Profiles",3); Nav("Settings",4);
     ImGui::SetCursorPosY((std::max)(ImGui::GetCursorPosY()+16,height-214));
-    ImGui::Separator(); ImGui::TextDisabled(" INSERT / menu");
+    ImGui::Separator(); ImGui::TextDisabled("%s",standalone?" Local preview":" INSERT / menu");
     ImGui::PushStyleColor(ImGuiCol_Text,ImVec4(.93f,.53f,.58f,1));
-    if(ImGui::Button("Detach",ImVec2(-1,32))) ImGui::OpenPopup("Detach Fusion?");
+    if(ImGui::Button(standalone?"Close preview":"Detach",ImVec2(-1,32))) {
+        if(standalone) { *running=false; *open=false; }
+        else ImGui::OpenPopup("Detach Fusion?");
+    }
     ImGui::PopStyleColor();
     if(ImGui::BeginPopupModal("Detach Fusion?",nullptr,ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("Unload Fusion from this game session?");
@@ -242,7 +245,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
         ImGui::TextUnformatted("Modules enabled"); ImGui::TextColored(Accent(),"%d / 3",active);
         ImGui::TextUnformatted("Friends"); ImGui::TextColored(Accent(),"%d",int(settings::friends.size()));
         Section("QUICK TIP");
-        ImGui::TextWrapped("Scroll to see all settings. Changes apply immediately. Save a profile to keep them.");
+        ImGui::TextWrapped("%s",standalone?"Controls update this preview only. No game is connected. Save a profile to keep your settings.":"Scroll to see all settings. Changes apply immediately. Save a profile to keep them.");
         ImGui::EndChild();
     }
     ImGui::End();
