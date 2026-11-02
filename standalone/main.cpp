@@ -305,13 +305,28 @@ int SelfTest() {
             }
         }
     }
-    // Run the actual switch with synthetic mouse events; no OS input is injected.
-    io.DisplaySize=ImVec2(1280,800);FusionGui::page=0;settings::AA_Enabled=false;
-    for(int frame=0;frame<4;frame++) {
-        io.AddMousePosEvent(1000,280);
-        if(frame==1) io.AddMouseButtonEvent(0,true);
-        if(frame==2) io.AddMouseButtonEvent(0,false);
-        ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);ImGui::Render();
+    // Exercise the actual dashboard switch at its current layout position.
+    // Read the ImGui item rectangle instead of hard-coding screen coordinates.
+    io.DisplaySize=ImVec2(1280,800);FusionGui::page=5;FusionGui::ModuleFilter=0;
+    FusionGui::Search[0]=0;settings::AA_Enabled=false;
+    ImVec2 toggleCenter(-1,-1);
+    for(int frame=0;frame<5;frame++) {
+        if(frame>0) {
+            io.AddMousePosEvent(toggleCenter.x,toggleCenter.y);
+            if(frame==2) io.AddMouseButtonEvent(0,true);
+            if(frame==3) io.AddMouseButtonEvent(0,false);
+        }
+        ImGui::NewFrame();FusionGui::Render(EmptyPanel,EmptyPanel,&open,&running,true);
+        if(frame==0) {
+            ImGuiWindow* card=ImGui::FindWindowByName("##card");
+            Check(card!=nullptr,"Dashboard card was not rendered");
+            // The first card toggle is 33x18 at local (width-49,16).
+            // Prefer its actual rendered location to the previous fixed screen point.
+            const float available=(std::min)(1120.f,io.DisplaySize.x-24.f)-292.f-20.f-40.f;
+            const float cardWidth=(available-22.f)*.5f;
+            toggleCenter=ImVec2(card->Pos.x+cardWidth-49.f+16.5f,card->Pos.y+25.f);
+        }
+        ImGui::Render();
     }
     Check(settings::AA_Enabled,"Toggle interaction failed");
     FusionGui::ModuleFilter=1;
