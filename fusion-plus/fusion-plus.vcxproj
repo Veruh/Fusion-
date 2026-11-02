@@ -160,7 +160,6 @@
     <ClInclude Include="ext\nlohmann\json_fwd.hpp" />
     <ClInclude Include="src\base\java\javahook.h" />
     <ClInclude Include="src\base\java\hotspot\hotspot.h" />
-    <ClInclude Include="src\base\moduleManager\modules\movement\sprintReset.h" />
     <ClInclude Include="src\base\moduleManager\modules\movement\velocity.h" />
     <ClInclude Include="src\base\notificationManager\notificationManager.h" />
     <ClInclude Include="src\base\configManager\configManager.h" />
@@ -177,8 +176,6 @@
     <ClInclude Include="src\base\sdk\net\minecraft\inventory\IInventory.h" />
     <ClInclude Include="src\base\sdk\net\minecraft\item\Item.h" />
     <ClInclude Include="src\base\sdk\net\minecraft\item\ItemStack.h" />
-    <ClInclude Include="src\base\moduleManager\modules\combat\rightAutoClicker.h" />
-    <ClInclude Include="src\base\moduleManager\modules\combat\leftAutoClicker.h" />
     <ClInclude Include="ext\fonts\jetbrainsmono.h" />
     <ClInclude Include="src\base\sdk\net\minecraft\entity\player\InventoryPlayer.h" />
     <ClInclude Include="src\base\sdk\net\minecraft\util\BlockPos.h" />
@@ -248,7 +245,6 @@
   <ItemGroup>
     <ClCompile Include="src\base\java\javahook.cpp" />
     <ClCompile Include="src\base\java\hotspot\hotspot.cpp" />
-    <ClCompile Include="src\base\moduleManager\modules\movement\sprintReset.cpp" />
     <ClCompile Include="src\base\moduleManager\modules\movement\velocity.cpp" />
     <ClCompile Include="src\base\notificationManager\notificationManager.cpp" />
     <ClCompile Include="src\base\configManager\configManager.cpp" />
@@ -263,8 +259,6 @@
     <ClCompile Include="src\base\sdk\net\minecraft\inventory\IInventory.cpp" />
     <ClCompile Include="src\base\sdk\net\minecraft\item\Item.cpp" />
     <ClCompile Include="src\base\sdk\net\minecraft\item\ItemStack.cpp" />
-    <ClCompile Include="src\base\moduleManager\modules\combat\rightAutoClicker.cpp" />
-    <ClCompile Include="src\base\moduleManager\modules\combat\leftAutoClicker.cpp" />
     <ClCompile Include="src\base\sdk\net\minecraft\entity\player\InventoryPlayer.cpp" />
     <ClCompile Include="src\base\sdk\net\minecraft\util\BlockPos.cpp" />
     <ClCompile Include="src\base\sdk\net\minecraft\util\MovingObjectPosition.cpp" />
