@@ -10,38 +10,59 @@ static bool attachedByFusion = false;
 
 bool setupClassLoader()
 {
+    if (Java::Env->PushLocalFrame(32) != JNI_OK) return false;
+    auto fail = []() {
+        if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
+        Java::Env->PopLocalFrame(nullptr);
+        return false;
+    };
     jclass c_Thread = Java::Env->FindClass("java/lang/Thread");
+    if (!c_Thread || Java::Env->ExceptionCheck()) return fail();
     jclass c_Map = Java::Env->FindClass("java/util/Map");
+    if (!c_Map || Java::Env->ExceptionCheck()) return fail();
     jclass c_Set = Java::Env->FindClass("java/util/Set");
+    if (!c_Set || Java::Env->ExceptionCheck()) return fail();
     jclass c_ClassLoader = Java::Env->FindClass("java/lang/ClassLoader");
+    if (!c_ClassLoader || Java::Env->ExceptionCheck()) return fail();
 
     jmethodID mid_getAllStackTraces = Java::Env->GetStaticMethodID(c_Thread, "getAllStackTraces", "()Ljava/util/Map;");
+    if (!mid_getAllStackTraces || Java::Env->ExceptionCheck()) return fail();
     jmethodID mid_keySet = Java::Env->GetMethodID(c_Map, "keySet", "()Ljava/util/Set;");
+    if (!mid_keySet || Java::Env->ExceptionCheck()) return fail();
     jmethodID mid_toArray = Java::Env->GetMethodID(c_Set, "toArray", "()[Ljava/lang/Object;");
+    if (!mid_toArray || Java::Env->ExceptionCheck()) return fail();
     jmethodID mid_getContextClassLoader = Java::Env->GetMethodID(c_Thread, "getContextClassLoader", "()Ljava/lang/ClassLoader;");
+    if (!mid_getContextClassLoader || Java::Env->ExceptionCheck()) return fail();
     mid_findClass = Java::Env->GetMethodID(c_ClassLoader, "findClass", "(Ljava/lang/String;)Ljava/lang/Class;");
-    jmethodID mid_currentThread = Java::Env->GetStaticMethodID(c_Thread, "currentThread", "()Ljava/lang/Thread;");
+    if (!mid_findClass || Java::Env->ExceptionCheck()) return fail();
 
     jobject obj_stackTracesMap = Java::Env->CallStaticObjectMethod(c_Thread, mid_getAllStackTraces);
+    if (!obj_stackTracesMap || Java::Env->ExceptionCheck()) return fail();
     jobject obj_threadsSet = Java::Env->CallObjectMethod(obj_stackTracesMap, mid_keySet);
+    if (!obj_threadsSet || Java::Env->ExceptionCheck()) return fail();
 
     jobjectArray threads = (jobjectArray)Java::Env->CallObjectMethod(obj_threadsSet, mid_toArray);
+    if (!threads || Java::Env->ExceptionCheck()) return fail();
     jint szThreads = Java::Env->GetArrayLength(threads);
 
     for (int i = 0; i < szThreads; i++)
     {
         jobject thread = Java::Env->GetObjectArrayElement(threads, i);
+        if (!thread || Java::Env->ExceptionCheck()) return fail();
         jobject classLoaderObj = Java::Env->CallObjectMethod(thread, mid_getContextClassLoader);
+        if (Java::Env->ExceptionCheck()) return fail();
 
         if (classLoaderObj) {
             
             jstring className = Java::Env->NewStringUTF("net.minecraft.client.Minecraft");
+            if (!className || Java::Env->ExceptionCheck()) return fail();
             jobject minecraftClass = Java::Env->CallObjectMethod(classLoaderObj, mid_findClass, className);
 
             if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
             if (minecraftClass)
             {
                 classLoader = Java::Env->NewGlobalRef(classLoaderObj);
+                if (!classLoader || Java::Env->ExceptionCheck()) return fail();
 
                 Java::Env->DeleteLocalRef(minecraftClass);
                 Java::Env->DeleteLocalRef(classLoaderObj);
@@ -57,14 +78,7 @@ bool setupClassLoader()
         Java::Env->DeleteLocalRef(thread);
     }
 
-    Java::Env->DeleteLocalRef(threads);
-    Java::Env->DeleteLocalRef(obj_stackTracesMap);
-    Java::Env->DeleteLocalRef(obj_threadsSet);
-    Java::Env->DeleteLocalRef(c_Thread);
-    Java::Env->DeleteLocalRef(c_Map);
-    Java::Env->DeleteLocalRef(c_Set);
-    Java::Env->DeleteLocalRef(c_ClassLoader);
-
+    Java::Env->PopLocalFrame(nullptr);
     return classLoader != nullptr;
 }
 
