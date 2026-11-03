@@ -57,7 +57,7 @@ struct Menu
 	static void Hook_wndProc();
 
 	static void Unhook_wglSwapBuffers();
-	static void Unhook_wndProc();
+	static bool Unhook_wndProc();
 
 	// ints for IDs
 	static inline int ID = 0;

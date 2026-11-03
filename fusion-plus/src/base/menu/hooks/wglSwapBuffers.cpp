@@ -41,28 +41,9 @@ bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 	// info: window handles change when you enter/exit fullscreen
 	if (Menu::HandleWindow != WindowFromDC(hdc) && Menu::Initialized)
 	{
-		// set handlewindow so that the wndproc can attach to new one before passing
-		Menu::HandleWindow = WindowFromDC(hdc);
-
-		// opengl context for font issue
-		Menu::OriginalGLContext = wglGetCurrentContext();
-		wglMakeCurrent(hdc, wglCreateContext(hdc));
-
-		// uninitialize imgui opengl and win32 implementation
-		ImGui_ImplOpenGL2_Shutdown();
-		ImGui_ImplWin32_Shutdown();
-		
-		// reinitialize it
-		ImGui_ImplWin32_Init(Menu::HandleWindow);
-		ImGui_ImplOpenGL2_Init();
-
-		// set wndproc
-		Menu::Hook_wndProc();
-
-		// revert to old ctx
-		wglMakeCurrent(hdc, Menu::OriginalGLContext);
-
-		// end detour
+		// A different window/context requires a fresh session; do not rehook it
+		// while callbacks on the old window may still be running.
+		Base::Running = false;
 		stateLock.unlock();
 		return original_wglSwapBuffers(hdc);
 	}
@@ -73,8 +54,12 @@ bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 
 	std::call_once(setupFlag, [&] {
 		Menu::Hook_wndProc();
-		Menu::SetupImgui();
+		if (Base::Running) Menu::SetupImgui();
 	});
+	if (!Base::Running) {
+		stateLock.unlock();
+		return original_wglSwapBuffers(hdc);
+	}
 
 	wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext);
 

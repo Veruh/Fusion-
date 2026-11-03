@@ -374,12 +374,14 @@ void Menu::Kill()
 	Menu::RemoveHooks();
 	Menu::RestoreCursorClip();
 	if (Menu::Initialized) {
+		HDC previousDC = wglGetCurrentDC();
+		HGLRC previousContext = wglGetCurrentContext();
 		const bool contextReady = wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext) == TRUE;
 		if (contextReady) ImGui_ImplOpenGL2_Shutdown();
 		ImGui_ImplWin32_Shutdown();
 		ImGui::DestroyContext();
 		if (contextReady) {
-			wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
+			wglMakeCurrent(previousDC, previousContext);
 			wglDeleteContext(Menu::MenuGLContext);
 		}
 		Menu::Initialized = false;
