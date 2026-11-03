@@ -88,7 +88,8 @@ void Base::Init()
 	}
 
 	if (!SDK::Init()) {
-		MessageBoxA(NULL, "The Minecraft mapping could not be verified. No modules were started.", "Fusion Studio", MB_OK | MB_ICONERROR);
+		const std::string details = std::string("The Minecraft mapping could not be verified. No modules were started.\n\nMissing: ") + StrayCache::failureName;
+		MessageBoxA(NULL, details.c_str(), "Fusion Studio", MB_OK | MB_ICONERROR);
 		StrayCache::DeleteRefs();
 		Java::Kill();
 		MH_Uninitialize();

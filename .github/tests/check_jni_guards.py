@@ -10,7 +10,7 @@ classes = lookups = 0
 for index, line in enumerate(lines):
     if 'Java::AssignClass(' in line:
         classes += 1
-        assert re.search(r'if\s*\(!Java::AssignClass\(.*\)\)\s*return;', line), (index, line)
+        assert re.search(r'if\s*\(!Java::AssignClass\(.*\)\).*failureName\s*=.*return;', line), (index, line)
     if re.search(r'Java::Env->Get(?:Static)?(?:Field|Method)ID\(', line):
         lookups += 1
         name = re.match(r'\s*(\w+)\s*=', line)

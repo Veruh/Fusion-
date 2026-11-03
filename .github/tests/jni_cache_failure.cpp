@@ -1,6 +1,7 @@
 #include <cmath>
 #include "sdk/strayCache.h"
 #include <iostream>
+#include <string>
 
 namespace {
 int calls = 0;
@@ -40,6 +41,8 @@ int main()
         StrayCache::initialized = false;
         StrayCache::Initialize();
         if (StrayCache::initialized || calls != failed || pending) return failed;
+        if (failed == 1 && std::string(StrayCache::failureName) != "class: net.minecraft.client.Minecraft") return 125;
+        if (failed == 2 && std::string(StrayCache::failureName) != "mapping: minecraft_getMinecraft") return 126;
         if (failed == 2 && !cleared) return 123;
     }
     calls = 0; failAt = 0; pending = false;
