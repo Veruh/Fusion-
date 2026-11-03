@@ -4,6 +4,8 @@
 #include "modules/visual/esp.h"
 #include "modules/movement/velocity.h"
 #include "commonData.h"
+#include "base.h"
+#include "java/java.h"
 
 #include <configManager/configManager.h>
 #include <imgui/imgui.h>
@@ -37,13 +39,28 @@ void ModuleManager::Init()
 
 void ModuleManager::UpdateModules()
 {
+	// The update runs on one attached native thread. Discard local JNI references
+	// every tick instead of retaining them until the JVM thread detaches.
+	if (!Java::Env || Java::Env->PushLocalFrame(256) != JNI_OK) {
+		if (Java::Env && Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
+		Base::Running = false;
+		return;
+	}
 	CommonData::UpdateData();
 
 	for (auto& module : modules)
 	{
+		if (Java::Env->ExceptionCheck()) break;
 		// Velocity must observe disable/focus changes to release any held key.
 		module->Update();
 	}
+	if (Java::Env->ExceptionCheck()) {
+		Java::Env->ExceptionClear();
+		CommonData::dataUpdated = false;
+		Base::Running = false;
+	}
+	CommonData::nativePlayerList.clear();
+	Java::Env->PopLocalFrame(nullptr);
 }
 
 void ModuleManager::Stop()

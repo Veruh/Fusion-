@@ -29,13 +29,21 @@ jobject CWorld::GetInstance()
 std::vector<CEntityPlayer> CWorld::GetPlayerList()
 {
 	std::vector<CEntityPlayer> finalList;
-	jobject playerEntitiesList = Java::Env->GetObjectField(this->GetInstance(), this->FieldIDs["playerEntities"]);
-	jobjectArray playerEntities = List::List(playerEntitiesList).toArray();
+	jobject world = this->GetInstance();
+	if (!world || Java::Env->ExceptionCheck()) return finalList;
+	jobject playerEntitiesList = Java::Env->GetObjectField(world, this->FieldIDs["playerEntities"]);
+	if (!playerEntitiesList || Java::Env->ExceptionCheck()) return finalList;
+	List playerList(playerEntitiesList);
+	if (Java::Env->ExceptionCheck()) return finalList;
+	jobjectArray playerEntities = playerList.toArray();
+	if (!playerEntities || Java::Env->ExceptionCheck()) return finalList;
 	int size = Java::Env->GetArrayLength(playerEntities);
+	if (Java::Env->ExceptionCheck()) return finalList;
 	
 	for (int i = 0; i < size; i++)
 	{
 		jobject obj_player = Java::Env->GetObjectArrayElement(playerEntities, i);
+		if (Java::Env->ExceptionCheck()) return {};
 		if (!obj_player) continue;
 
 		CEntityPlayer player =  CEntityPlayer::CEntityPlayer(obj_player);
@@ -88,3 +96,4 @@ CIBlockState CWorld::GetBlockState(CBlockPos pos)
 {
 	return CIBlockState(Java::Env->CallObjectMethod(this->GetInstance(), this->MethodIDs["getBlockState"], pos.GetInstance()));
 }
+

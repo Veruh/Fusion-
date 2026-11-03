@@ -31,5 +31,7 @@ Al cerrar el menú de la DLL se deshabilitan los hooks, pero la DLL y los trampo
 
 La versión experimental limita el arranque a los nombres de Lunar 1.8.9 y detiene la inicialización si alguno de los nombres del caché no se resuelve. Como el caché incluye elementos heredados que podrían no ser necesarios para los módulos, esta verificación conservadora puede rechazar incluso una instalación compatible. La prueba de CI verifica que existan los controles, pero no simula la JVM ni valida los nombres reales de Lunar.
 
+Cada actualización crea un marco de referencias locales JNI y lo libera al terminar, después de vaciar la lista temporal de jugadores. Si detecta una excepción al terminar la lectura o entre módulos, desactiva el ciclo. Hay código heredado que realiza varias llamadas JNI antes de volver al ciclo, por lo que todavía se debe auditar la propagación de errores dentro de cada llamada.
+
 La compilación de revisión no publica el DLL como artefacto. El EXE de vista previa no debe presentarse como si ya controlase el juego.
 
