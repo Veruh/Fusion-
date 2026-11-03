@@ -355,4 +355,3 @@ void AimAssist::RenderMenu()
 	ImGui::EndGroup();
 }
 
-warning: in the working copy of 'fusion-plus/src/base/sdk/strayCache.h', LF will be replaced by CRLF the next time Git touches it
