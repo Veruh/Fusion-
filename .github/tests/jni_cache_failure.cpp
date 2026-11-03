@@ -36,7 +36,7 @@ int main()
     Java::Env = &env;
     Java::Version = MinecraftVersion::LUNAR_1_8_9;
 
-    for (int failed : {1, 2, 35, 121}) {
+    for (int failed : {1, 2, 35, 120}) {
         calls = 0; failAt = failed; cleared = false; pending = false;
         StrayCache::initialized = false;
         StrayCache::Initialize();
@@ -47,7 +47,7 @@ int main()
     }
     calls = 0; failAt = 0; pending = false;
     StrayCache::Initialize();
-    if (!StrayCache::initialized || calls != 121) return 124;
+    if (!StrayCache::initialized || calls != 120) return 124;
     std::cout << "JNI cache stops at simulated failures and initializes on success\n";
 }
 

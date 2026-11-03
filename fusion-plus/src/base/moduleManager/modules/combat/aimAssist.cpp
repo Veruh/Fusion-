@@ -65,9 +65,12 @@ void AimAssist::Update()
 		AimAssist::data = Vector3();
 		return;
 	}
-	if (settings::AA_blockBreakCheck && SDK::Minecraft->GetMouseOver().IsTypeOfBlock()) {
-		AimAssist::data = Vector3();
-		return;
+	if (settings::AA_blockBreakCheck) {
+		const bool lookingAtBlock = SDK::Minecraft->GetMouseOver().IsTypeOfBlock();
+		if (Java::Env->ExceptionCheck() || lookingAtBlock) {
+			AimAssist::data = Vector3();
+			return;
+		}
 	}
 	if (settings::AA_weaponOnly && !MinecraftUtils::IsWeapon(SDK::Minecraft->thePlayer->GetInventory().GetCurrentItem())) {
 		AimAssist::data = Vector3();

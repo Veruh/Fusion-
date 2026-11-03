@@ -485,9 +485,6 @@ struct StrayCache {
 			movingObjectPosition_typeOfHit = Java::Env->GetFieldID(movingObjectPosition_class, "typeOfHit", "Lnet/minecraft/util/MovingObjectPosition$MovingObjectType;");
 			if (!movingObjectPosition_typeOfHit || Java::Env->ExceptionCheck()) { failureName = "mapping: movingObjectPosition_typeOfHit"; Java::Env->ExceptionClear(); return; }
 
-			movingObjectPosition_BLOCK = Java::Env->GetStaticFieldID(movingObjectPosition_class, "BLOCK", "Lnet/minecraft/util/MovingObjectPosition$MovingObjectType;");
-			if (!movingObjectPosition_BLOCK || Java::Env->ExceptionCheck()) { failureName = "mapping: movingObjectPosition_BLOCK"; Java::Env->ExceptionClear(); return; }
-
 			if (!Java::AssignClass("net.minecraft.util.BlockPos", blockPos_class)) { failureName = "class: net.minecraft.util.BlockPos"; return; }
 			blockPos_constructorDouble = Java::Env->GetMethodID(blockPos_class, "<init>", "(DDD)V");
 			if (!blockPos_constructorDouble || Java::Env->ExceptionCheck()) { failureName = "mapping: blockPos_constructorDouble"; Java::Env->ExceptionClear(); return; }
