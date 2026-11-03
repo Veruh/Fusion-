@@ -9,6 +9,8 @@
 #include "menu/menu.h"
 #include <gl/GL.h>
 #include <configManager/configManager.h>
+#include <algorithm>
+#include <cmath>
 
 void Esp::Update()
 {
@@ -18,7 +20,10 @@ void Esp::Update()
 	CEntityPlayerSP* player = SDK::Minecraft->thePlayer;
 	CWorld* world = SDK::Minecraft->theWorld;
 	std::vector<CommonData::PlayerData> playerList = CommonData::nativePlayerList;
-	if (playerList.empty()) return;
+	if (playerList.empty()) {
+		renderData.clear();
+		return;
+	}
 
 	Vector3 renderPos = CommonData::renderPos;
 	Vector3 pos = player->GetPos();
@@ -123,8 +128,8 @@ void Esp::Update()
 		// For when the player gets close to an entity, a fade factor; a value between 0 and 1, with basic math, can get a cool looking fade effect if the player is too close
 		// or inside the FadeDistance radius.
 		float fadeFactor = 1.0f;
-		if ((dist - 1) <= settings::ESP_FadeDistance)
-			fadeFactor = ((dist - 1) / settings::ESP_FadeDistance);
+		if (std::isfinite(settings::ESP_FadeDistance) && settings::ESP_FadeDistance > 0.0f && (dist - 1) <= settings::ESP_FadeDistance)
+			fadeFactor = std::clamp((dist - 1) / settings::ESP_FadeDistance, 0.0f, 1.0f);
 
 		// To render the distance value under the ESP box.
 		char distC[32];
@@ -157,8 +162,8 @@ void Esp::RenderUpdate()
 		
 		float left = FLT_MAX;
 		float top = FLT_MAX;
-		float right = FLT_MIN;
-		float bottom = FLT_MIN;
+		float right = -FLT_MAX;
+		float bottom = -FLT_MAX;
 		if (settings::ESP_BoxType == 0/* || settings::ESP_HealthBar || (settings::ESP_Text && Menu::Font->IsLoaded())*/)
 		{
 			std::vector<Vector3> bv = data.boxVerticies;
@@ -439,3 +444,4 @@ void Esp::RenderMenu()
 	ImGui::PopStyleColor();
 	ImGui::EndGroup();
 }
+

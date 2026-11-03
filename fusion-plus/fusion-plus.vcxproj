@@ -243,8 +243,6 @@
     <ClInclude Include="src\base\sdk\net\minecraft\util\Vec3.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\base\java\javahook.cpp" />
-    <ClCompile Include="src\base\java\hotspot\hotspot.cpp" />
     <ClCompile Include="src\base\moduleManager\modules\movement\velocity.cpp" />
     <ClCompile Include="src\base\notificationManager\notificationManager.cpp" />
     <ClCompile Include="src\base\configManager\configManager.cpp" />
@@ -312,3 +310,4 @@
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
+

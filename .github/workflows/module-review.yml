@@ -1,0 +1,49 @@
+name: Build module review
+on:
+  pull_request:
+    paths:
+      - 'fusion-plus/**'
+      - '.github/workflows/module-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: microsoft/setup-msbuild@v2
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Check Lunar JNI lookup guards
+        run: python .github/tests/check_jni_guards.py
+      - name: Test JNI string lifetime with a fake environment
+        shell: cmd
+        run: |
+          cl /nologo /std:c++20 /EHsc /I fusion-plus\ext /I fusion-plus\src\base .github\tests\string_lifetime.cpp fusion-plus\src\base\sdk\java\lang\String.cpp /Fe:string_lifetime.exe
+          if errorlevel 1 exit /b %errorlevel%
+          string_lifetime.exe
+          if errorlevel 1 exit /b %errorlevel%
+      - name: Test cache initialization with simulated JNI failures
+        shell: cmd
+        run: |
+          cl /nologo /std:c++20 /EHsc /I fusion-plus\ext /I fusion-plus\src\base .github\tests\jni_cache_failure.cpp /Fe:jni_cache_failure.exe
+          if errorlevel 1 exit /b %errorlevel%
+          jni_cache_failure.exe
+          if errorlevel 1 exit /b %errorlevel%
+      - name: Compile experimental DLL for offline review
+        run: msbuild fusion-plus\fusion-plus.vcxproj /m /p:Configuration=Release /p:Platform=x64
+      - name: Record candidate SHA-256
+        shell: pwsh
+        run: Get-FileHash -LiteralPath fusion-plus/build/fusion-plus.dll -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: experimental-review-do-not-inject
+          path: fusion-plus/build/fusion-plus.dll
+          if-no-files-found: error
+          retention-days: 3
+

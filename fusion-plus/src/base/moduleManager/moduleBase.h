@@ -7,6 +7,7 @@
 class ModuleBase
 {
 public:
+	virtual ~ModuleBase() = default;
 	virtual void Update() = 0;
 	virtual void RenderUpdate() = 0;
 
@@ -20,3 +21,4 @@ private:
 	std::string Name;
 	std::string Category;
 };
+

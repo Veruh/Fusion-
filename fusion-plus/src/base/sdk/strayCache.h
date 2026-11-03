@@ -6,6 +6,7 @@
 struct StrayCache {
 
 	inline static bool initialized;
+	inline static const char* failureName = "unknown";
 
 	// MINECRAFT CLASS
 	inline static jclass minecraft_class;
@@ -193,248 +194,313 @@ struct StrayCache {
 
 		if (Java::Version == MinecraftVersion::LUNAR_1_8_9)
 		{
-			Java::AssignClass("net.minecraft.client.Minecraft", minecraft_class);
+			if (!Java::AssignClass("net.minecraft.client.Minecraft", minecraft_class)) { failureName = "class: net.minecraft.client.Minecraft"; return; }
 			minecraft_getMinecraft = Java::Env->GetStaticMethodID(minecraft_class, "getMinecraft", "()Lnet/minecraft/client/Minecraft;");
-			if (!minecraft_getMinecraft) Logger::Log("minecraft_getMinecraft: %p", minecraft_getMinecraft);
+			if (!minecraft_getMinecraft || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_getMinecraft"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_getRenderViewEntity = Java::Env->GetMethodID(minecraft_class, "getRenderViewEntity", "()Lnet/minecraft/entity/Entity;");
-			if (!minecraft_getRenderViewEntity) Logger::Log("minecraft_getRenderViewEntity: %p", minecraft_getRenderViewEntity);
+			if (!minecraft_getRenderViewEntity || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_getRenderViewEntity"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_clickMouse = Java::Env->GetMethodID(minecraft_class, "clickMouse", "()V");
-			if (!minecraft_clickMouse) Logger::Log("minecraft_clickMouse: %p", minecraft_clickMouse);
+			if (!minecraft_clickMouse || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_clickMouse"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_thePlayer = Java::Env->GetFieldID(minecraft_class, "thePlayer", "Lnet/minecraft/client/entity/EntityPlayerSP;");
-			if (!minecraft_thePlayer) Logger::Log("minecraft_thePlayer: %p", minecraft_thePlayer);
+			if (!minecraft_thePlayer || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_thePlayer"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_playerController = Java::Env->GetFieldID(minecraft_class, "playerController", "Lnet/minecraft/client/multiplayer/PlayerControllerMP;");
-			if (!minecraft_playerController) Logger::Log("minecraft_playerController: %p", minecraft_playerController);
+			if (!minecraft_playerController || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_playerController"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_theWorld = Java::Env->GetFieldID(minecraft_class, "theWorld", "Lnet/minecraft/client/multiplayer/WorldClient;");
-			if (!minecraft_theWorld) Logger::Log("minecraft_theWorld: %p", minecraft_theWorld);
+			if (!minecraft_theWorld || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_theWorld"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_renderManager = Java::Env->GetFieldID(minecraft_class, "renderManager", "Lnet/minecraft/client/renderer/entity/RenderManager;");
-			if (!minecraft_renderManager) Logger::Log("minecraft_renderManager: %p", minecraft_renderManager);
+			if (!minecraft_renderManager || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_renderManager"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_timer = Java::Env->GetFieldID(minecraft_class, "timer", "Lnet/minecraft/util/Timer;");
-			if (!minecraft_timer) Logger::Log("minecraft_timer: %p", minecraft_timer);
+			if (!minecraft_timer || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_timer"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_gameSettings = Java::Env->GetFieldID(minecraft_class, "gameSettings", "Lnet/minecraft/client/settings/GameSettings;");
-			if (!minecraft_gameSettings) Logger::Log("minecraft_gameSettings: %p", minecraft_gameSettings);
+			if (!minecraft_gameSettings || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_gameSettings"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_currentScreen = Java::Env->GetFieldID(minecraft_class, "currentScreen", "Lnet/minecraft/client/gui/GuiScreen;");
-			if (!minecraft_currentScreen) Logger::Log("minecraft_currentScreen: %p", minecraft_currentScreen);
+			if (!minecraft_currentScreen || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_currentScreen"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_objectMouseOver = Java::Env->GetFieldID(minecraft_class, "objectMouseOver", "Lnet/minecraft/util/MovingObjectPosition;");
-			if (!minecraft_objectMouseOver) Logger::Log("minecraft_objectMouseOver: %p", minecraft_objectMouseOver);
+			if (!minecraft_objectMouseOver || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_objectMouseOver"; Java::Env->ExceptionClear(); return; }
+
 			minecraft_launchedVersion = Java::Env->GetFieldID(minecraft_class, "launchedVersion", "Ljava/lang/String;");
-			if (!minecraft_launchedVersion) Logger::Log("minecraft_launchedVersion: %p", minecraft_launchedVersion);
+			if (!minecraft_launchedVersion || Java::Env->ExceptionCheck()) { failureName = "mapping: minecraft_launchedVersion"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.client.ClientBrandRetriever", clientBrandRetriever_class);
+			if (!Java::AssignClass("net.minecraft.client.ClientBrandRetriever", clientBrandRetriever_class)) { failureName = "class: net.minecraft.client.ClientBrandRetriever"; return; }
 			clientBrandRetriever_getClientModName = Java::Env->GetStaticMethodID(clientBrandRetriever_class, "getClientModName", "()Ljava/lang/String;");
-			if (!clientBrandRetriever_getClientModName) Logger::Log("clientBrandRetriever_getClientModName: %p", clientBrandRetriever_getClientModName);
+			if (!clientBrandRetriever_getClientModName || Java::Env->ExceptionCheck()) { failureName = "mapping: clientBrandRetriever_getClientModName"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.client.multiplayer.WorldClient", worldClient_class);
+			if (!Java::AssignClass("net.minecraft.client.multiplayer.WorldClient", worldClient_class)) { failureName = "class: net.minecraft.client.multiplayer.WorldClient"; return; }
 			worldClient_entityList = Java::Env->GetFieldID(worldClient_class, "entityList", "Ljava/util/Set;");
-			if (!worldClient_entityList) Logger::Log("worldClient_entityList: %p", worldClient_entityList);
+			if (!worldClient_entityList || Java::Env->ExceptionCheck()) { failureName = "mapping: worldClient_entityList"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.client.multiplayer.PlayerControllerMP", playerControllerMP_class);
+			if (!Java::AssignClass("net.minecraft.client.multiplayer.PlayerControllerMP", playerControllerMP_class)) { failureName = "class: net.minecraft.client.multiplayer.PlayerControllerMP"; return; }
 			playerControllerMP_windowClick = Java::Env->GetMethodID(playerControllerMP_class, "windowClick", "(IIIILnet/minecraft/entity/player/EntityPlayer;)Lnet/minecraft/item/ItemStack;");
-			if (!playerControllerMP_windowClick) Logger::Log("playerControllerMP_windowClick: %p", playerControllerMP_windowClick);
+			if (!playerControllerMP_windowClick || Java::Env->ExceptionCheck()) { failureName = "mapping: playerControllerMP_windowClick"; Java::Env->ExceptionClear(); return; }
+
 			playerControllerMP_getBlockReachDistance = Java::Env->GetMethodID(playerControllerMP_class, "getBlockReachDistance", "()F");
-			if (!playerControllerMP_getBlockReachDistance) Logger::Log("playerControllerMP_getBlockReachDistance: %p", playerControllerMP_getBlockReachDistance);
+			if (!playerControllerMP_getBlockReachDistance || Java::Env->ExceptionCheck()) { failureName = "mapping: playerControllerMP_getBlockReachDistance"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.client.renderer.ActiveRenderInfo", activeRenderInfo_class);
+			if (!Java::AssignClass("net.minecraft.client.renderer.ActiveRenderInfo", activeRenderInfo_class)) { failureName = "class: net.minecraft.client.renderer.ActiveRenderInfo"; return; }
 			activeRenderInfo_PROJECTION = Java::Env->GetStaticFieldID(activeRenderInfo_class, "PROJECTION", "Ljava/nio/FloatBuffer;");
-			if (!activeRenderInfo_PROJECTION) Logger::Log("activeRenderInfo_PROJECTION: %p", activeRenderInfo_PROJECTION);
+			if (!activeRenderInfo_PROJECTION || Java::Env->ExceptionCheck()) { failureName = "mapping: activeRenderInfo_PROJECTION"; Java::Env->ExceptionClear(); return; }
+
 			activeRenderInfo_MODELVIEW = Java::Env->GetStaticFieldID(activeRenderInfo_class, "MODELVIEW", "Ljava/nio/FloatBuffer;");
-			if (!activeRenderInfo_MODELVIEW) Logger::Log("activeRenderInfo_MODELVIEW: %p", activeRenderInfo_MODELVIEW);
+			if (!activeRenderInfo_MODELVIEW || Java::Env->ExceptionCheck()) { failureName = "mapping: activeRenderInfo_MODELVIEW"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.client.renderer.entity.RenderManager", renderManager_class);
+			if (!Java::AssignClass("net.minecraft.client.renderer.entity.RenderManager", renderManager_class)) { failureName = "class: net.minecraft.client.renderer.entity.RenderManager"; return; }
 			renderManager_renderPosX = Java::Env->GetFieldID(renderManager_class, "renderPosX", "D");
-			if (!renderManager_renderPosX) Logger::Log("renderManager_renderPosX: %p", renderManager_renderPosX);
+			if (!renderManager_renderPosX || Java::Env->ExceptionCheck()) { failureName = "mapping: renderManager_renderPosX"; Java::Env->ExceptionClear(); return; }
+
 			renderManager_renderPosY = Java::Env->GetFieldID(renderManager_class, "renderPosY", "D");
-			if (!renderManager_renderPosY) Logger::Log("renderManager_renderPosY: %p", renderManager_renderPosY);
+			if (!renderManager_renderPosY || Java::Env->ExceptionCheck()) { failureName = "mapping: renderManager_renderPosY"; Java::Env->ExceptionClear(); return; }
+
 			renderManager_renderPosZ = Java::Env->GetFieldID(renderManager_class, "renderPosZ", "D");
-			if (!renderManager_renderPosZ) Logger::Log("renderManager_renderPosZ: %p", renderManager_renderPosZ);
+			if (!renderManager_renderPosZ || Java::Env->ExceptionCheck()) { failureName = "mapping: renderManager_renderPosZ"; Java::Env->ExceptionClear(); return; }
+
 			renderManager_viewerPosX = Java::Env->GetFieldID(renderManager_class, "viewerPosX", "D");
-			if (!renderManager_viewerPosX) Logger::Log("renderManager_viewerPosX: %p", renderManager_viewerPosX);
+			if (!renderManager_viewerPosX || Java::Env->ExceptionCheck()) { failureName = "mapping: renderManager_viewerPosX"; Java::Env->ExceptionClear(); return; }
+
 			renderManager_viewerPosY = Java::Env->GetFieldID(renderManager_class, "viewerPosY", "D");
-			if (!renderManager_viewerPosY) Logger::Log("renderManager_viewerPosY: %p", renderManager_viewerPosY);
+			if (!renderManager_viewerPosY || Java::Env->ExceptionCheck()) { failureName = "mapping: renderManager_viewerPosY"; Java::Env->ExceptionClear(); return; }
+
 			renderManager_viewerPosZ = Java::Env->GetFieldID(renderManager_class, "viewerPosZ", "D");
-			if (!renderManager_viewerPosZ) Logger::Log("renderManager_viewerPosZ: %p", renderManager_viewerPosZ);
+			if (!renderManager_viewerPosZ || Java::Env->ExceptionCheck()) { failureName = "mapping: renderManager_viewerPosZ"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.client.settings.GameSettings", gameSettings_class);
+			if (!Java::AssignClass("net.minecraft.client.settings.GameSettings", gameSettings_class)) { failureName = "class: net.minecraft.client.settings.GameSettings"; return; }
 			gameSettings_setOptionKeyBinding = Java::Env->GetMethodID(gameSettings_class, "setOptionKeyBinding", "(Lnet/minecraft/client/settings/KeyBinding;I)V");
-			if (!gameSettings_setOptionKeyBinding) Logger::Log("gameSettings_setOptionKeyBinding: %p", gameSettings_setOptionKeyBinding);
+			if (!gameSettings_setOptionKeyBinding || Java::Env->ExceptionCheck()) { failureName = "mapping: gameSettings_setOptionKeyBinding"; Java::Env->ExceptionClear(); return; }
+
 			gameSettings_thirdPersonView = Java::Env->GetFieldID(gameSettings_class, "thirdPersonView", "I");
-			if (!gameSettings_thirdPersonView) Logger::Log("gameSettings_thirdPersonView: %p", gameSettings_thirdPersonView);
+			if (!gameSettings_thirdPersonView || Java::Env->ExceptionCheck()) { failureName = "mapping: gameSettings_thirdPersonView"; Java::Env->ExceptionClear(); return; }
+
 			gameSettings_fovSetting = Java::Env->GetFieldID(gameSettings_class, "fovSetting", "F");
-			if (!gameSettings_fovSetting) Logger::Log("gameSettings_fovSetting: %p", gameSettings_fovSetting);
+			if (!gameSettings_fovSetting || Java::Env->ExceptionCheck()) { failureName = "mapping: gameSettings_fovSetting"; Java::Env->ExceptionClear(); return; }
+
 			gameSettings_keyBindFullscreen = Java::Env->GetFieldID(gameSettings_class, "keyBindFullscreen", "Lnet/minecraft/client/settings/KeyBinding;");
-			if (!gameSettings_keyBindFullscreen) Logger::Log("gameSettings_keyBindFullscreen: %p", gameSettings_keyBindFullscreen);
+			if (!gameSettings_keyBindFullscreen || Java::Env->ExceptionCheck()) { failureName = "mapping: gameSettings_keyBindFullscreen"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.client.entity.EntityPlayerSP", entityPlayerSP_class);
-
-			Java::AssignClass("net.minecraft.client.gui.inventory.GuiContainer", guiContainer_class);
+			if (!Java::AssignClass("net.minecraft.client.entity.EntityPlayerSP", entityPlayerSP_class)) { failureName = "class: net.minecraft.client.entity.EntityPlayerSP"; return; }
+			if (!Java::AssignClass("net.minecraft.client.gui.inventory.GuiContainer", guiContainer_class)) { failureName = "class: net.minecraft.client.gui.inventory.GuiContainer"; return; }
 			guiContainer_inventorySlots = Java::Env->GetFieldID(guiContainer_class, "inventorySlots", "Lnet/minecraft/inventory/Container;");
-			if (!guiContainer_inventorySlots) Logger::Log("guiContainer_inventorySlots: %p", guiContainer_inventorySlots);
+			if (!guiContainer_inventorySlots || Java::Env->ExceptionCheck()) { failureName = "mapping: guiContainer_inventorySlots"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.client.gui.inventory.GuiChest", guiChest_class);
+			if (!Java::AssignClass("net.minecraft.client.gui.inventory.GuiChest", guiChest_class)) { failureName = "class: net.minecraft.client.gui.inventory.GuiChest"; return; }
 			guiChest_upperChestInventory = Java::Env->GetFieldID(guiChest_class, "upperChestInventory", "Lnet/minecraft/inventory/IInventory;");
-			if (!guiChest_upperChestInventory) Logger::Log("guiChest_upperChestInventory: %p", guiChest_upperChestInventory);
+			if (!guiChest_upperChestInventory || Java::Env->ExceptionCheck()) { failureName = "mapping: guiChest_upperChestInventory"; Java::Env->ExceptionClear(); return; }
+
 			guiChest_lowerChestInventory = Java::Env->GetFieldID(guiChest_class, "lowerChestInventory", "Lnet/minecraft/inventory/IInventory;");
-			if (!guiChest_lowerChestInventory) Logger::Log("guiChest_lowerChestInventory: %p", guiChest_lowerChestInventory);
+			if (!guiChest_lowerChestInventory || Java::Env->ExceptionCheck()) { failureName = "mapping: guiChest_lowerChestInventory"; Java::Env->ExceptionClear(); return; }
+
 			guiChest_inventoryRows = Java::Env->GetFieldID(guiChest_class, "inventoryRows", "I");
-			if (!guiChest_inventoryRows) Logger::Log("guiChest_inventoryRows: %p", guiChest_inventoryRows);
+			if (!guiChest_inventoryRows || Java::Env->ExceptionCheck()) { failureName = "mapping: guiChest_inventoryRows"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.entity.Entity", entity_class);
+			if (!Java::AssignClass("net.minecraft.entity.Entity", entity_class)) { failureName = "class: net.minecraft.entity.Entity"; return; }
 			entity_getName = Java::Env->GetMethodID(entity_class, "getName", "()Ljava/lang/String;");
-			if (!entity_getName) Logger::Log("entity_getName: %p", entity_getName);
+			if (!entity_getName || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_getName"; Java::Env->ExceptionClear(); return; }
+
 			entity_isSneaking = Java::Env->GetMethodID(entity_class, "isSneaking", "()Z");
-			if (!entity_isSneaking) Logger::Log("entity_isSneaking: %p", entity_isSneaking);
+			if (!entity_isSneaking || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_isSneaking"; Java::Env->ExceptionClear(); return; }
+
 			entity_isSprinting = Java::Env->GetMethodID(entity_class, "isSprinting", "()Z");
-			if (!entity_isSprinting) Logger::Log("entity_isSprinting: %p", entity_isSprinting);
+			if (!entity_isSprinting || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_isSprinting"; Java::Env->ExceptionClear(); return; }
+
 			entity_setSprinting = Java::Env->GetMethodID(entity_class, "setSprinting", "(Z)V");
-			if (!entity_setSprinting) Logger::Log("entity_setSprinting: %p", entity_setSprinting);
+			if (!entity_setSprinting || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_setSprinting"; Java::Env->ExceptionClear(); return; }
+
 			entity_isInvisibleToPlayer = Java::Env->GetMethodID(entity_class, "isInvisibleToPlayer", "(Lnet/minecraft/entity/player/EntityPlayer;)Z");
-			if (!entity_isInvisibleToPlayer) Logger::Log("entity_isInvisibleToPlayer: %p", entity_isInvisibleToPlayer);
+			if (!entity_isInvisibleToPlayer || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_isInvisibleToPlayer"; Java::Env->ExceptionClear(); return; }
+
 			entity_posX = Java::Env->GetFieldID(entity_class, "posX", "D");
-			if (!entity_posX) Logger::Log("entity_posX: %p", entity_posX);
+			if (!entity_posX || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_posX"; Java::Env->ExceptionClear(); return; }
+
 			entity_posY = Java::Env->GetFieldID(entity_class, "posY", "D");
-			if (!entity_posY) Logger::Log("entity_posY: %p", entity_posY);
+			if (!entity_posY || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_posY"; Java::Env->ExceptionClear(); return; }
+
 			entity_posZ = Java::Env->GetFieldID(entity_class, "posZ", "D");
-			if (!entity_posZ) Logger::Log("entity_posZ: %p", entity_posZ);
+			if (!entity_posZ || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_posZ"; Java::Env->ExceptionClear(); return; }
+
 			entity_lastTickPosX = Java::Env->GetFieldID(entity_class, "lastTickPosX", "D");
-			if (!entity_lastTickPosX) Logger::Log("entity_lastTickPosX: %p", entity_lastTickPosX);
+			if (!entity_lastTickPosX || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_lastTickPosX"; Java::Env->ExceptionClear(); return; }
+
 			entity_lastTickPosY = Java::Env->GetFieldID(entity_class, "lastTickPosY", "D");
-			if (!entity_lastTickPosY) Logger::Log("entity_lastTickPosY: %p", entity_lastTickPosY);
+			if (!entity_lastTickPosY || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_lastTickPosY"; Java::Env->ExceptionClear(); return; }
+
 			entity_lastTickPosZ = Java::Env->GetFieldID(entity_class, "lastTickPosZ", "D");
-			if (!entity_lastTickPosZ) Logger::Log("entity_lastTickPosZ: %p", entity_lastTickPosZ);
+			if (!entity_lastTickPosZ || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_lastTickPosZ"; Java::Env->ExceptionClear(); return; }
+
 			entity_width = Java::Env->GetFieldID(entity_class, "width", "F");
-			if (!entity_width) Logger::Log("entity_width: %p", entity_width);
+			if (!entity_width || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_width"; Java::Env->ExceptionClear(); return; }
+
 			entity_height = Java::Env->GetFieldID(entity_class, "height", "F");
-			if (!entity_height) Logger::Log("entity_height: %p", entity_height);
+			if (!entity_height || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_height"; Java::Env->ExceptionClear(); return; }
+
 			entity_distanceWalkedModified = Java::Env->GetFieldID(entity_class, "distanceWalkedModified", "F");
-			if (!entity_distanceWalkedModified) Logger::Log("entity_distanceWalkedModified: %p", entity_distanceWalkedModified);
+			if (!entity_distanceWalkedModified || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_distanceWalkedModified"; Java::Env->ExceptionClear(); return; }
+
 			entity_prevDistanceWalkedModified = Java::Env->GetFieldID(entity_class, "prevDistanceWalkedModified", "F");
-			if (!entity_prevDistanceWalkedModified) Logger::Log("entity_prevDistanceWalkedModified: %p", entity_prevDistanceWalkedModified);
+			if (!entity_prevDistanceWalkedModified || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_prevDistanceWalkedModified"; Java::Env->ExceptionClear(); return; }
+
 			entity_rotationYaw = Java::Env->GetFieldID(entity_class, "rotationYaw", "F");
-			if (!entity_rotationYaw) Logger::Log("entity_rotationYaw: %p", entity_rotationYaw);
+			if (!entity_rotationYaw || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_rotationYaw"; Java::Env->ExceptionClear(); return; }
+
 			entity_rotationPitch = Java::Env->GetFieldID(entity_class, "rotationPitch", "F");
-			if (!entity_rotationPitch) Logger::Log("entity_rotationPitch: %p", entity_rotationPitch);
+			if (!entity_rotationPitch || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_rotationPitch"; Java::Env->ExceptionClear(); return; }
+
 			entity_prevRotationYaw = Java::Env->GetFieldID(entity_class, "prevRotationYaw", "F");
-			if (!entity_prevRotationYaw) Logger::Log("entity_prevRotationYaw: %p", entity_prevRotationYaw);
+			if (!entity_prevRotationYaw || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_prevRotationYaw"; Java::Env->ExceptionClear(); return; }
+
 			entity_prevRotationPitch = Java::Env->GetFieldID(entity_class, "prevRotationPitch", "F");
-			if (!entity_prevRotationPitch) Logger::Log("entity_prevRotationPitch: %p", entity_prevRotationPitch);
+			if (!entity_prevRotationPitch || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_prevRotationPitch"; Java::Env->ExceptionClear(); return; }
+
 			entity_boundingBox = Java::Env->GetFieldID(entity_class, "boundingBox", "Lnet/minecraft/util/AxisAlignedBB;");
-			if (!entity_boundingBox) Logger::Log("entity_boundingBox: %p", entity_boundingBox);
+			if (!entity_boundingBox || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_boundingBox"; Java::Env->ExceptionClear(); return; }
+
 			entity_motionX = Java::Env->GetFieldID(entity_class, "motionX", "D");
-			if (!entity_motionX) Logger::Log("entity_motionX: %p", entity_motionX);
+			if (!entity_motionX || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_motionX"; Java::Env->ExceptionClear(); return; }
+
 			entity_motionY = Java::Env->GetFieldID(entity_class, "motionY", "D");
-			if (!entity_motionY) Logger::Log("entity_motionY: %p", entity_motionY);
+			if (!entity_motionY || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_motionY"; Java::Env->ExceptionClear(); return; }
+
 			entity_motionZ = Java::Env->GetFieldID(entity_class, "motionZ", "D");
-			if (!entity_motionZ) Logger::Log("entity_motionZ: %p", entity_motionZ);
+			if (!entity_motionZ || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_motionZ"; Java::Env->ExceptionClear(); return; }
+
 			entity_hurtResistantTime = Java::Env->GetFieldID(entity_class, "hurtResistantTime", "I");
-			if (!entity_hurtResistantTime) Logger::Log("entity_hurtResistantTime: %p", entity_hurtResistantTime);
+			if (!entity_hurtResistantTime || Java::Env->ExceptionCheck()) { failureName = "mapping: entity_hurtResistantTime"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.entity.EntityLivingBase", entityLivingBase_class);
+			if (!Java::AssignClass("net.minecraft.entity.EntityLivingBase", entityLivingBase_class)) { failureName = "class: net.minecraft.entity.EntityLivingBase"; return; }
 			entityLivingBase_getHealth = Java::Env->GetMethodID(entityLivingBase_class, "getHealth", "()F");
-			if (!entityLivingBase_getHealth) Logger::Log("entityLivingBase_getHealth: %p", entityLivingBase_getHealth);
+			if (!entityLivingBase_getHealth || Java::Env->ExceptionCheck()) { failureName = "mapping: entityLivingBase_getHealth"; Java::Env->ExceptionClear(); return; }
+
 			entityLivingBase_getMaxHealth = Java::Env->GetMethodID(entityLivingBase_class, "getMaxHealth", "()F");
-			if (!entityLivingBase_getMaxHealth) Logger::Log("entityLivingBase_getMaxHealth: %p", entityLivingBase_getMaxHealth);
+			if (!entityLivingBase_getMaxHealth || Java::Env->ExceptionCheck()) { failureName = "mapping: entityLivingBase_getMaxHealth"; Java::Env->ExceptionClear(); return; }
+
 			entityLivingBase_canEntityBeSeen = Java::Env->GetMethodID(entityLivingBase_class, "canEntityBeSeen", "(Lnet/minecraft/entity/Entity;)Z");
-			if (!entityLivingBase_canEntityBeSeen) Logger::Log("entityLivingBase_canEntityBeSeen: %p", entityLivingBase_canEntityBeSeen);
+			if (!entityLivingBase_canEntityBeSeen || Java::Env->ExceptionCheck()) { failureName = "mapping: entityLivingBase_canEntityBeSeen"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.entity.player.EntityPlayer", entityPlayer_class);
+			if (!Java::AssignClass("net.minecraft.entity.player.EntityPlayer", entityPlayer_class)) { failureName = "class: net.minecraft.entity.player.EntityPlayer"; return; }
 			entityPlayer_inventory = Java::Env->GetFieldID(entityPlayer_class, "inventory", "Lnet/minecraft/entity/player/InventoryPlayer;");
-			if (!entityPlayer_inventory) Logger::Log("entityPlayer_inventory: %p", entityPlayer_inventory);
+			if (!entityPlayer_inventory || Java::Env->ExceptionCheck()) { failureName = "mapping: entityPlayer_inventory"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.entity.player.InventoryPlayer", inventoryPlayer_class);
+			if (!Java::AssignClass("net.minecraft.entity.player.InventoryPlayer", inventoryPlayer_class)) { failureName = "class: net.minecraft.entity.player.InventoryPlayer"; return; }
 			inventoryPlayer_getCurrentItem = Java::Env->GetMethodID(inventoryPlayer_class, "getCurrentItem", "()Lnet/minecraft/item/ItemStack;");
-			if (!inventoryPlayer_getCurrentItem) Logger::Log("inventoryPlayer_getCurrentItem: %p", inventoryPlayer_getCurrentItem);
+			if (!inventoryPlayer_getCurrentItem || Java::Env->ExceptionCheck()) { failureName = "mapping: inventoryPlayer_getCurrentItem"; Java::Env->ExceptionClear(); return; }
+
 			inventoryPlayer_mainInventory = Java::Env->GetFieldID(inventoryPlayer_class, "mainInventory", "[Lnet/minecraft/item/ItemStack;");
-			if (!inventoryPlayer_mainInventory) Logger::Log("inventoryPlayer_mainInventory: %p", inventoryPlayer_mainInventory);
+			if (!inventoryPlayer_mainInventory || Java::Env->ExceptionCheck()) { failureName = "mapping: inventoryPlayer_mainInventory"; Java::Env->ExceptionClear(); return; }
+
 			inventoryPlayer_armorInventory = Java::Env->GetFieldID(inventoryPlayer_class, "armorInventory", "[Lnet/minecraft/item/ItemStack;");
-			if (!inventoryPlayer_armorInventory) Logger::Log("inventoryPlayer_armorInventory: %p", inventoryPlayer_armorInventory);
+			if (!inventoryPlayer_armorInventory || Java::Env->ExceptionCheck()) { failureName = "mapping: inventoryPlayer_armorInventory"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.world.World", world_class);
+			if (!Java::AssignClass("net.minecraft.world.World", world_class)) { failureName = "class: net.minecraft.world.World"; return; }
 			world_rayTraceBlocks = Java::Env->GetMethodID(world_class, "rayTraceBlocks", "(Lnet/minecraft/util/Vec3;Lnet/minecraft/util/Vec3;ZZZ)Lnet/minecraft/util/MovingObjectPosition;");
-			if (!world_rayTraceBlocks) Logger::Log("world_rayTraceBlocks: %p", world_rayTraceBlocks);
+			if (!world_rayTraceBlocks || Java::Env->ExceptionCheck()) { failureName = "mapping: world_rayTraceBlocks"; Java::Env->ExceptionClear(); return; }
+
 			world_getBlockState = Java::Env->GetMethodID(world_class, "getBlockState", "(Lnet/minecraft/util/BlockPos;)Lnet/minecraft/block/state/IBlockState;");
-			if (!world_getBlockState) Logger::Log("world_getBlockState: %p", world_getBlockState);
+			if (!world_getBlockState || Java::Env->ExceptionCheck()) { failureName = "mapping: world_getBlockState"; Java::Env->ExceptionClear(); return; }
+
 			world_playerEntities = Java::Env->GetFieldID(world_class, "playerEntities", "Ljava/util/List;");
-			if (!world_playerEntities) Logger::Log("world_playerEntities: %p", world_playerEntities);
+			if (!world_playerEntities || Java::Env->ExceptionCheck()) { failureName = "mapping: world_playerEntities"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.item.Item", item_class);
+			if (!Java::AssignClass("net.minecraft.item.Item", item_class)) { failureName = "class: net.minecraft.item.Item"; return; }
 			item_getIdFromItem = Java::Env->GetStaticMethodID(item_class, "getIdFromItem", "(Lnet/minecraft/item/Item;)I");
-			if (!item_getIdFromItem) Logger::Log("item_getIdFromItem: %p", item_getIdFromItem);
+			if (!item_getIdFromItem || Java::Env->ExceptionCheck()) { failureName = "mapping: item_getIdFromItem"; Java::Env->ExceptionClear(); return; }
+
 			item_getUnlocalizedName = Java::Env->GetMethodID(item_class, "getUnlocalizedName", "()Ljava/lang/String;");
-			if (!item_getUnlocalizedName) Logger::Log("item_getUnlocalizedName: %p", item_getUnlocalizedName);
+			if (!item_getUnlocalizedName || Java::Env->ExceptionCheck()) { failureName = "mapping: item_getUnlocalizedName"; Java::Env->ExceptionClear(); return; }
+
 			item_getItemStackLimit = Java::Env->GetMethodID(item_class, "getItemStackLimit", "()I");
-			if (!item_getItemStackLimit) Logger::Log("item_getItemStackLimit: %p", item_getItemStackLimit);
+			if (!item_getItemStackLimit || Java::Env->ExceptionCheck()) { failureName = "mapping: item_getItemStackLimit"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.item.ItemStack", itemStack_class);
+			if (!Java::AssignClass("net.minecraft.item.ItemStack", itemStack_class)) { failureName = "class: net.minecraft.item.ItemStack"; return; }
 			itemStack_getItem = Java::Env->GetMethodID(itemStack_class, "getItem", "()Lnet/minecraft/item/Item;");
-			if (!itemStack_getItem) Logger::Log("itemStack_getItem: %p", itemStack_getItem);
+			if (!itemStack_getItem || Java::Env->ExceptionCheck()) { failureName = "mapping: itemStack_getItem"; Java::Env->ExceptionClear(); return; }
+
 			itemStack_getMetadata = Java::Env->GetMethodID(itemStack_class, "getMetadata", "()I");
-			if (!itemStack_getMetadata) Logger::Log("itemStack_getMetadata: %p", itemStack_getMetadata);
+			if (!itemStack_getMetadata || Java::Env->ExceptionCheck()) { failureName = "mapping: itemStack_getMetadata"; Java::Env->ExceptionClear(); return; }
+
 			itemStack_getMaxDamage = Java::Env->GetMethodID(itemStack_class, "getMaxDamage", "()I");
-			if (!itemStack_getMaxDamage) Logger::Log("itemStack_getMaxDamage: %p", itemStack_getMaxDamage);
+			if (!itemStack_getMaxDamage || Java::Env->ExceptionCheck()) { failureName = "mapping: itemStack_getMaxDamage"; Java::Env->ExceptionClear(); return; }
+
 			itemStack_stackSize = Java::Env->GetFieldID(itemStack_class, "stackSize", "I");
-			if (!itemStack_stackSize) Logger::Log("itemStack_stackSize: %p", itemStack_stackSize);
+			if (!itemStack_stackSize || Java::Env->ExceptionCheck()) { failureName = "mapping: itemStack_stackSize"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.inventory.IInventory", iInventory_class);
+			if (!Java::AssignClass("net.minecraft.inventory.IInventory", iInventory_class)) { failureName = "class: net.minecraft.inventory.IInventory"; return; }
 			iInventory_getSizeInventory = Java::Env->GetMethodID(iInventory_class, "getSizeInventory", "()I");
-			if (!iInventory_getSizeInventory) Logger::Log("iInventory_getSizeInventory: %p", iInventory_getSizeInventory);
-			iInventory_getStackInSlot = Java::Env->GetMethodID(iInventory_class, "getStackInSlot", "(I)Lnet/minecraft/item/ItemStack;");
-			if (!iInventory_getStackInSlot) Logger::Log("iInventory_getStackInSlot: %p", iInventory_getStackInSlot);
+			if (!iInventory_getSizeInventory || Java::Env->ExceptionCheck()) { failureName = "mapping: iInventory_getSizeInventory"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.inventory.Container", container_class);
+			iInventory_getStackInSlot = Java::Env->GetMethodID(iInventory_class, "getStackInSlot", "(I)Lnet/minecraft/item/ItemStack;");
+			if (!iInventory_getStackInSlot || Java::Env->ExceptionCheck()) { failureName = "mapping: iInventory_getStackInSlot"; Java::Env->ExceptionClear(); return; }
+
+			if (!Java::AssignClass("net.minecraft.inventory.Container", container_class)) { failureName = "class: net.minecraft.inventory.Container"; return; }
 			container_windowId_name = "windowId";
 
-			Java::AssignClass("net.minecraft.enchantment.EnchantmentHelper", enchantmentHelper_class);
+			if (!Java::AssignClass("net.minecraft.enchantment.EnchantmentHelper", enchantmentHelper_class)) { failureName = "class: net.minecraft.enchantment.EnchantmentHelper"; return; }
 			enchantmentHelper_getEnchantments = Java::Env->GetStaticMethodID(enchantmentHelper_class, "getEnchantments", "(Lnet/minecraft/item/ItemStack;)Ljava/util/Map;");
-			if (!enchantmentHelper_getEnchantments) Logger::Log("enchantmentHelper_getEnchantments: %p", enchantmentHelper_getEnchantments);
+			if (!enchantmentHelper_getEnchantments || Java::Env->ExceptionCheck()) { failureName = "mapping: enchantmentHelper_getEnchantments"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.block.Block", block_class);
+			if (!Java::AssignClass("net.minecraft.block.Block", block_class)) { failureName = "class: net.minecraft.block.Block"; return; }
 			block_getIdFromBlock = Java::Env->GetStaticMethodID(block_class, "getIdFromBlock", "(Lnet/minecraft/block/Block;)I");
-			if (!block_getIdFromBlock) Logger::Log("block_getIdFromBlock: %p", block_getIdFromBlock);
+			if (!block_getIdFromBlock || Java::Env->ExceptionCheck()) { failureName = "mapping: block_getIdFromBlock"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.block.state.IBlockState", iBlockState_class);
+			if (!Java::AssignClass("net.minecraft.block.state.IBlockState", iBlockState_class)) { failureName = "class: net.minecraft.block.state.IBlockState"; return; }
 			iBlockState_getBlock = Java::Env->GetMethodID(iBlockState_class, "getBlock", "()Lnet/minecraft/block/Block;");
-			if (!iBlockState_getBlock) Logger::Log("iBlockState_getBlock: %p", iBlockState_getBlock);
+			if (!iBlockState_getBlock || Java::Env->ExceptionCheck()) { failureName = "mapping: iBlockState_getBlock"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.util.AxisAlignedBB", axisAlignedBB_class);
+			if (!Java::AssignClass("net.minecraft.util.AxisAlignedBB", axisAlignedBB_class)) { failureName = "class: net.minecraft.util.AxisAlignedBB"; return; }
 			axisAlignedBB_minX = Java::Env->GetFieldID(axisAlignedBB_class, "minX", "D");
-			if (!axisAlignedBB_minX) Logger::Log("axisAlignedBB_minX: %p", axisAlignedBB_minX);
+			if (!axisAlignedBB_minX || Java::Env->ExceptionCheck()) { failureName = "mapping: axisAlignedBB_minX"; Java::Env->ExceptionClear(); return; }
+
 			axisAlignedBB_minY = Java::Env->GetFieldID(axisAlignedBB_class, "minY", "D");
-			if (!axisAlignedBB_minY) Logger::Log("axisAlignedBB_minY: %p", axisAlignedBB_minY);
+			if (!axisAlignedBB_minY || Java::Env->ExceptionCheck()) { failureName = "mapping: axisAlignedBB_minY"; Java::Env->ExceptionClear(); return; }
+
 			axisAlignedBB_minZ = Java::Env->GetFieldID(axisAlignedBB_class, "minZ", "D");
-			if (!axisAlignedBB_minZ) Logger::Log("axisAlignedBB_minZ: %p", axisAlignedBB_minZ);
+			if (!axisAlignedBB_minZ || Java::Env->ExceptionCheck()) { failureName = "mapping: axisAlignedBB_minZ"; Java::Env->ExceptionClear(); return; }
+
 			axisAlignedBB_maxX = Java::Env->GetFieldID(axisAlignedBB_class, "maxX", "D");
-			if (!axisAlignedBB_maxX) Logger::Log("axisAlignedBB_maxX: %p", axisAlignedBB_maxX);
+			if (!axisAlignedBB_maxX || Java::Env->ExceptionCheck()) { failureName = "mapping: axisAlignedBB_maxX"; Java::Env->ExceptionClear(); return; }
+
 			axisAlignedBB_maxY = Java::Env->GetFieldID(axisAlignedBB_class, "maxY", "D");
-			if (!axisAlignedBB_maxY) Logger::Log("axisAlignedBB_maxY: %p", axisAlignedBB_maxY);
+			if (!axisAlignedBB_maxY || Java::Env->ExceptionCheck()) { failureName = "mapping: axisAlignedBB_maxY"; Java::Env->ExceptionClear(); return; }
+
 			axisAlignedBB_maxZ = Java::Env->GetFieldID(axisAlignedBB_class, "maxZ", "D");
-			if (!axisAlignedBB_maxZ) Logger::Log("axisAlignedBB_maxZ: %p", axisAlignedBB_maxZ);
+			if (!axisAlignedBB_maxZ || Java::Env->ExceptionCheck()) { failureName = "mapping: axisAlignedBB_maxZ"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.util.Timer", timer_class);
+			if (!Java::AssignClass("net.minecraft.util.Timer", timer_class)) { failureName = "class: net.minecraft.util.Timer"; return; }
 			timer_renderPartialTicks = Java::Env->GetFieldID(timer_class, "renderPartialTicks", "F");
-			if (!timer_renderPartialTicks) Logger::Log("timer_renderPartialTicks: %p", timer_renderPartialTicks);
+			if (!timer_renderPartialTicks || Java::Env->ExceptionCheck()) { failureName = "mapping: timer_renderPartialTicks"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.util.MovingObjectPosition", movingObjectPosition_class);
+			if (!Java::AssignClass("net.minecraft.util.MovingObjectPosition", movingObjectPosition_class)) { failureName = "class: net.minecraft.util.MovingObjectPosition"; return; }
 			movingObjectPosition_hitVec = Java::Env->GetFieldID(movingObjectPosition_class, "hitVec", "Lnet/minecraft/util/Vec3;");
-			if (!movingObjectPosition_hitVec) Logger::Log("movingObjectPosition_hitVec: %p", movingObjectPosition_hitVec);
+			if (!movingObjectPosition_hitVec || Java::Env->ExceptionCheck()) { failureName = "mapping: movingObjectPosition_hitVec"; Java::Env->ExceptionClear(); return; }
+
 			movingObjectPosition_entityHit = Java::Env->GetFieldID(movingObjectPosition_class, "entityHit", "Lnet/minecraft/entity/Entity;");
-			if (!movingObjectPosition_entityHit) Logger::Log("movingObjectPosition_entityHit: %p", movingObjectPosition_entityHit);
+			if (!movingObjectPosition_entityHit || Java::Env->ExceptionCheck()) { failureName = "mapping: movingObjectPosition_entityHit"; Java::Env->ExceptionClear(); return; }
+
 			movingObjectPosition_typeOfHit = Java::Env->GetFieldID(movingObjectPosition_class, "typeOfHit", "Lnet/minecraft/util/MovingObjectPosition$MovingObjectType;");
-			if (!movingObjectPosition_typeOfHit) Logger::Log("movingObjectPosition_typeOfHit: %p", movingObjectPosition_typeOfHit);
-			movingObjectPosition_BLOCK = Java::Env->GetStaticFieldID(movingObjectPosition_class, "BLOCK", "Lnet/minecraft/util/MovingObjectPosition$MovingObjectType;");
-			if (!movingObjectPosition_BLOCK) Logger::Log("movingObjectPosition_BLOCK: %p", movingObjectPosition_BLOCK);
+			if (!movingObjectPosition_typeOfHit || Java::Env->ExceptionCheck()) { failureName = "mapping: movingObjectPosition_typeOfHit"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.util.BlockPos", blockPos_class);
+			if (!Java::AssignClass("net.minecraft.util.BlockPos", blockPos_class)) { failureName = "class: net.minecraft.util.BlockPos"; return; }
 			blockPos_constructorDouble = Java::Env->GetMethodID(blockPos_class, "<init>", "(DDD)V");
-			if (!blockPos_constructorDouble) Logger::Log("blockPos_constructorDouble: %p", blockPos_constructorDouble);
-			blockPos_constructorInt = Java::Env->GetMethodID(blockPos_class, "<init>", "(III)V");
-			if (!blockPos_constructorInt) Logger::Log("blockPos_constructorInt: %p", blockPos_constructorInt);
+			if (!blockPos_constructorDouble || Java::Env->ExceptionCheck()) { failureName = "mapping: blockPos_constructorDouble"; Java::Env->ExceptionClear(); return; }
 
-			Java::AssignClass("net.minecraft.util.Vec3", vec3_class);
+			blockPos_constructorInt = Java::Env->GetMethodID(blockPos_class, "<init>", "(III)V");
+			if (!blockPos_constructorInt || Java::Env->ExceptionCheck()) { failureName = "mapping: blockPos_constructorInt"; Java::Env->ExceptionClear(); return; }
+
+			if (!Java::AssignClass("net.minecraft.util.Vec3", vec3_class)) { failureName = "class: net.minecraft.util.Vec3"; return; }
 			vec3_xCoord = Java::Env->GetFieldID(vec3_class, "xCoord", "D");
-			if (!vec3_xCoord) Logger::Log("vec3_xCoord: %p", vec3_xCoord);
+			if (!vec3_xCoord || Java::Env->ExceptionCheck()) { failureName = "mapping: vec3_xCoord"; Java::Env->ExceptionClear(); return; }
+
 			vec3_yCoord = Java::Env->GetFieldID(vec3_class, "yCoord", "D");
-			if (!vec3_yCoord) Logger::Log("vec3_yCoord: %p", vec3_yCoord);
+			if (!vec3_yCoord || Java::Env->ExceptionCheck()) { failureName = "mapping: vec3_yCoord"; Java::Env->ExceptionClear(); return; }
+
 			vec3_zCoord = Java::Env->GetFieldID(vec3_class, "zCoord", "D");
-			if (!vec3_zCoord) Logger::Log("vec3_zCoord: %p", vec3_zCoord);
+			if (!vec3_zCoord || Java::Env->ExceptionCheck()) { failureName = "mapping: vec3_zCoord"; Java::Env->ExceptionClear(); return; }
 
 			inventory_class_name = "net.minecraft.client.gui.inventory.GuiInventory";
 			chest_gui_class_name = "net.minecraft.client.gui.inventory.GuiChest";
@@ -1752,3 +1818,4 @@ struct StrayCache {
 		return nullptr;
 	}
 };
+

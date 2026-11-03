@@ -26,7 +26,14 @@ jobject String::GetInstance()
 std::string String::ToString()
 {
 	jstring jStr = (jstring)this->Instance;
+	if (!jStr) return {};
 	const char* nativeStr = Java::Env->GetStringUTFChars(jStr, nullptr);
+	if (!nativeStr) {
+		if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
+		return {};
+	}
+	std::string result(nativeStr);
 	Java::Env->ReleaseStringUTFChars(jStr, nativeStr);
-	return std::string(nativeStr);
+	return result;
 }
+

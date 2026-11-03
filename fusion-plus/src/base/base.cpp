@@ -33,9 +33,23 @@ void Base::Init()
 	Logger::Init();
 #endif
 
-	MH_Initialize();
+	if (MH_Initialize() != MH_OK) {
+		MessageBoxA(NULL, "Could not initialize the overlay. No modules were started.", "Fusion Studio", MB_OK | MB_ICONERROR);
+		Logger::Kill();
+		FreeLibraryAndExitThread(Main::HModule, 1);
+		return;
+	}
 
 	Java::Init();
+	if (!Java::Initialized) {
+		Logger::Log("Minecraft Java initialization failed");
+		MessageBoxA(NULL, "Could not safely initialize Minecraft. No modules were started.", "Fusion Studio", MB_OK | MB_ICONERROR);
+		Java::Kill();
+		MH_Uninitialize();
+		Logger::Kill();
+		FreeLibraryAndExitThread(Main::HModule, 1);
+		return;
+	}
 	switch (Java::Version)
 	{
 	case MinecraftVersion::LUNAR_1_8_9:
@@ -73,18 +87,30 @@ void Base::Init()
 		break;
 	}
 
-	SDK::Init();
-
-	Menu::Init();
+	if (!SDK::Init()) {
+		const std::string details = std::string("The Minecraft mapping could not be verified. No modules were started.\n\nMissing: ") + StrayCache::failureName;
+		MessageBoxA(NULL, details.c_str(), "Fusion Studio", MB_OK | MB_ICONERROR);
+		StrayCache::DeleteRefs();
+		Java::Kill();
+		MH_Uninitialize();
+		Logger::Kill();
+		FreeLibraryAndExitThread(Main::HModule, 1);
+		return;
+	}
 
 	g_ModuleManager = std::make_unique<ModuleManager>();
 	g_ModuleManager->Init();
 
 	Base::Running = true;
+	Menu::Init();
 
-	while (Base::Running)
+	while (true)
 	{
-		g_ModuleManager->UpdateModules();
+		{
+			std::lock_guard<std::recursive_mutex> lock(Base::StateMutex);
+			if (!Base::Running) break;
+			g_ModuleManager->UpdateModules();
+		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	}
 
@@ -93,6 +119,7 @@ void Base::Init()
 
 void Base::Kill()
 {
+	if (g_ModuleManager) g_ModuleManager->Stop();
 	if (Borderless::Enabled)
 		Borderless::Restore(Menu::HandleWindow);
 
@@ -101,5 +128,6 @@ void Base::Kill()
 	Menu::Kill();
 	Logger::Kill();
 
-	MH_Uninitialize();
+	// MinHook's disabled trampolines remain resident until process exit.
 }
+

@@ -4,7 +4,7 @@
 #include "menu/menu.h"
 #include <moduleManager/commonData.h>
 
-inline static void send_key(WORD vk_key, bool send_down = true)
+inline static bool send_key(WORD vk_key, bool send_down = true)
 {
 	static INPUT ip{ INPUT_KEYBOARD };
 
@@ -14,38 +14,35 @@ inline static void send_key(WORD vk_key, bool send_down = true)
 	ip.ki.wVk = vk_key;
 	ip.ki.dwFlags = send_down ? 0 : KEYEVENTF_KEYUP;
 
-	SendInput(1, &ip, sizeof(INPUT));
+	return SendInput(1, &ip, sizeof(INPUT)) == 1;
+}
+
+void Velocity::Stop()
+{
+	if (syntheticJumpHeld && send_key(VK_SPACE, false)) syntheticJumpHeld = false;
 }
 
 void Velocity::Update()
 {
-	static int lasting_time = 0;
-	if (lasting_time == 1)
+	const bool gameFocused = Menu::HandleWindow && GetForegroundWindow() == Menu::HandleWindow;
+	if (!settings::Velocity_Enabled || !gameFocused || Menu::Open || !CommonData::SanityCheck() || SDK::Minecraft->IsInGuiState())
 	{
-		send_key(VK_SPACE, false);
-		lasting_time = 0;
-	}
-	else if (lasting_time > 1)
-	{
-		lasting_time--;
-	}
-
-	if (!settings::Velocity_Enabled || !CommonData::SanityCheck() || SDK::Minecraft->IsInGuiState())
-	{
+		Stop();
+		canBeHit = true;
 		return;
 	}
+	if (syntheticJumpHeld && std::chrono::steady_clock::now() >= releaseAt) Stop();
 
 	CEntityPlayerSP* player = SDK::Minecraft->thePlayer;
 
 	int hurtResistantTime = player->GetHurtResistantTime();
 
-	static bool can_be_hit = true;
-	if (!can_be_hit && hurtResistantTime == 0)
+	if (!canBeHit && hurtResistantTime == 0)
 	{
-		can_be_hit = true;
+		canBeHit = true;
 	}
 
-	if (!can_be_hit)
+	if (!canBeHit || syntheticJumpHeld)
 	{
 		return;
 	}
@@ -57,11 +54,14 @@ void Velocity::Update()
 
 	if (settings::Velocity_Mode == 0)
 	{
-		if (rand_int(0, 100) <= settings::Velocity_JRChange)
+		const int chance = (std::clamp)(settings::Velocity_JRChange, 0, 100);
+		if (std::uniform_int_distribution<int>(1, 100)(random) <= chance && !(GetAsyncKeyState(VK_SPACE) & 0x8000))
 		{
-			send_key(VK_SPACE);
-			lasting_time = rand_int(40, 70);
-			can_be_hit = false;
+			syntheticJumpHeld = send_key(VK_SPACE);
+			if (syntheticJumpHeld) {
+				releaseAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(std::uniform_int_distribution<int>(200, 350)(random));
+				canBeHit = false;
+			}
 		}
 	}
 }
@@ -115,3 +115,4 @@ void Velocity::RenderMenu()
 
 	ImGui::EndGroup();
 }
+

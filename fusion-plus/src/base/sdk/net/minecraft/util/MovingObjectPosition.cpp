@@ -32,15 +32,16 @@ CVec3 CMovingObjectPosition::GetBlockPosition()
 
 bool CMovingObjectPosition::IsTypeOfBlock()
 {
+	if (!this->GetInstance()) return false;
 	jobject typeOfHit = Java::Env->GetObjectField(this->GetInstance(), StrayCache::movingObjectPosition_typeOfHit);
-	if (!typeOfHit) return false;
+	if (!typeOfHit || Java::Env->ExceptionCheck()) return false;
 
 	jclass movingObjectType = Java::Env->GetObjectClass(typeOfHit);
-	if (!movingObjectType) return false;
+	if (!movingObjectType || Java::Env->ExceptionCheck()) return false;
 	jfieldID block = StrayCache::GetMovingBlockPositionBLOCK(movingObjectType);
-	if (!block) return false;
+	if (!block || Java::Env->ExceptionCheck()) return false;
 	jobject object = Java::Env->GetStaticObjectField(movingObjectType, block);
-	if (!object) return false;
+	if (!object || Java::Env->ExceptionCheck()) return false;
 
 	return Java::Env->IsSameObject(object, typeOfHit);
 }
@@ -52,3 +53,4 @@ CEntity CMovingObjectPosition::GetEntityHit()
 
 	return CEntity(Java::Env->GetObjectField(this->GetInstance(), StrayCache::movingObjectPosition_entityHit));
 }
+

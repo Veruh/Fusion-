@@ -31,8 +31,6 @@ struct CommonData
 		float health = FLT_MAX;
 		float maxHealth = FLT_MAX;
 
-		// Tag-Back head item
-		CItem headItem;
 	};
 
 	inline static std::vector<PlayerData> nativePlayerList;
@@ -66,8 +64,7 @@ struct CommonData
 					player.GetHeight(),
 					player.GetWidth(),
 					player.GetHealth(),
-					player.GetMaxHealth(),
-					player.GetInventory().GetArmorInventory()[3].GetItem()
+					player.GetMaxHealth()
 				});
 		}
 		nativePlayerList = newData;
@@ -79,7 +76,8 @@ struct CommonData
 
 	// Return false if sanity check failed
 	static bool SanityCheck() {
-		if (!SDK::Minecraft->thePlayer->GetInstance() || !SDK::Minecraft->theWorld->GetInstance())
+		if (!SDK::Minecraft || !SDK::Minecraft->thePlayer || !SDK::Minecraft->theWorld ||
+			!SDK::Minecraft->thePlayer->GetInstance() || !SDK::Minecraft->theWorld->GetInstance())
 		{
 			CommonData::dataUpdated = false;
 			return false;
@@ -87,3 +85,4 @@ struct CommonData
 		return true;
 	}
 };
+

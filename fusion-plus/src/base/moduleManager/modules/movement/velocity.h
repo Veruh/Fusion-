@@ -7,18 +7,13 @@
 #include "util/math/geometry.h"
 
 #include <random>
-inline int rand_int(int min, int max)
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<int> dis(min, max);
-	return dis(gen);
-}
+#include <chrono>
 
 class Velocity : public ModuleBase
 {
 public:
 	void Update() override;
+	void Stop();
 	void RenderUpdate() override {}
 
 	void RenderMenu() override;
@@ -30,4 +25,9 @@ public:
 private:
 	std::string Name = "Velocity";
 	std::string Category = "Movement";
+	std::mt19937 random{std::random_device{}()};
+	std::chrono::steady_clock::time_point releaseAt{};
+	bool syntheticJumpHeld = false;
+	bool canBeHit = true;
 };
+

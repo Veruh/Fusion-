@@ -3,6 +3,7 @@
 #include "imgui/imgui_impl_win32.h"
 
 #include "configManager/settings.h"
+#include "base.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -10,11 +11,18 @@ typedef LRESULT(CALLBACK* template_WndProc) (HWND, UINT, WPARAM, LPARAM);
 template_WndProc original_wndProc;
 LRESULT CALLBACK hook_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	if (msg == WM_KEYDOWN)
+	std::unique_lock<std::recursive_mutex> stateLock(Base::StateMutex);
+	if (!Base::Running) {
+		const auto forward = original_wndProc;
+		stateLock.unlock();
+		return CallWindowProc(forward, hwnd, msg, wParam, lParam);
+	}
+	if (msg == WM_KEYDOWN && !(lParam & (1LL << 30)))
 	{
 		if (wParam == Menu::Keybind)
 		{
-			if (Menu::Open) Menu::MoveCursorToCenter(true);
+			// This callback may run on a different thread than the JNI environment.
+			// Do not query Minecraft here.
 			Menu::Open = !Menu::Open;
 		}
 		if (wParam == VK_ESCAPE && Menu::Open)
@@ -47,21 +55,31 @@ LRESULT CALLBACK hook_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		else
 		{
 			ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
-			return true;
+			if ((msg >= WM_KEYFIRST && msg <= WM_KEYLAST) ||
+				(msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST)) return true;
 		}
 	}
 
-	return CallWindowProc(original_wndProc, hwnd, msg, wParam, lParam);
+	const auto forward = original_wndProc;
+	stateLock.unlock();
+	return CallWindowProc(forward, hwnd, msg, wParam, lParam);
 }
 
 
 
 void Menu::Hook_wndProc()
 {
-	original_wndProc = (template_WndProc)SetWindowLongPtr(Menu::HandleWindow, GWLP_WNDPROC, (LONG_PTR)hook_WndProc);
+	original_wndProc = reinterpret_cast<template_WndProc>(GetWindowLongPtr(Menu::HandleWindow, GWLP_WNDPROC));
+	if (!original_wndProc) { Base::Running = false; return; }
+	SetLastError(0);
+	if (!SetWindowLongPtr(Menu::HandleWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(hook_WndProc)) && GetLastError() != 0)
+		Base::Running = false;
 }
 
-void Menu::Unhook_wndProc()
+bool Menu::Unhook_wndProc()
 {
-	SetWindowLongPtr(Menu::HandleWindow, GWLP_WNDPROC, (LONG_PTR)original_wndProc);
+	if (!IsWindow(Menu::HandleWindow)) return true;
+	if (GetWindowLongPtr(Menu::HandleWindow, GWLP_WNDPROC) != reinterpret_cast<LONG_PTR>(hook_WndProc)) return false;
+	return SetWindowLongPtr(Menu::HandleWindow, GWLP_WNDPROC, (LONG_PTR)original_wndProc) != 0;
 }
+

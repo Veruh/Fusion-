@@ -40,6 +40,7 @@ struct Menu
 	static void GlitchText(const char* text, ImVec2 pos);
 
 	static void MoveCursorToCenter(bool checkInGame);
+	static void RestoreCursorClip();
 
 	static inline HWND HandleWindow;
 	static inline HDC HandleDeviceContext;
@@ -56,9 +57,10 @@ struct Menu
 	static void Hook_wndProc();
 
 	static void Unhook_wglSwapBuffers();
-	static void Unhook_wndProc();
+	static bool Unhook_wndProc();
 
 	// ints for IDs
 	static inline int ID = 0;
 };
+
 
