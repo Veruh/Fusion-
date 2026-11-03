@@ -13,6 +13,7 @@ La aplicación `standalone` es una vista previa independiente; sus controles no 
 - ESP evita la división por cero al calcular transparencia, inicializa correctamente los límites de pantalla y elimina datos obsoletos cuando no hay jugadores.
 - Velocity usa un temporizador en lugar de contar iteraciones, limita la probabilidad y comprueba el foco antes de generar un salto. Intenta liberar una tecla generada al desactivar, perder foco o cerrar.
 - Los módulos arrancan desactivados, incluso si la última configuración los dejó activados.
+- Los perfiles antiguos ya no se cargan automáticamente al iniciar; la GUI conserva la opción de cargarlos manualmente. Una lista de amigos antigua inválida no debe interrumpir el arranque.
 - No se compilan los archivos heredados de JavaHook/HotSpot: ninguna referencia en el código restante los usa. Los archivos siguen en el repositorio para revisión histórica.
 
 ## Trabajo imprescindible antes de publicar una DLL

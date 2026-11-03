@@ -20,18 +20,14 @@ void ModuleManager::Init()
 
 	Logger::Log("Modules initialized");
 
-	// load friends
-	ConfigManager::LoadFriends();
-	Logger::Log("Friends loaded");
-
-	// load the first config
-	std::vector<std::string> configList = ConfigManager::GetConfigList();
-	if (!configList.empty())
-	{
-		ConfigManager::LoadConfig(configList[0].c_str());
-		Logger::Log("Config loaded: %s", configList[0].c_str());
+	// Old profiles can contain invalid settings. Load them only on explicit request.
+	try {
+		ConfigManager::LoadFriends();
+	} catch (const std::exception&) {
+		settings::friends.clear();
+		Logger::Log("Could not load legacy friends list");
 	}
-	// Start in a passive state even when a previous profile enabled modules.
+	// Start in a passive state regardless of prior sessions.
 	settings::AA_Enabled = false;
 	settings::ESP_Enabled = false;
 	settings::Velocity_Enabled = false;
