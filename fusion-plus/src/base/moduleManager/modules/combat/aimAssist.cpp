@@ -8,6 +8,7 @@
 #include "menu/menu.h"
 #include "java/java.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <random>
@@ -236,14 +237,16 @@ void AimAssist::Update()
 void AimAssist::RenderUpdate()
 {
 	if (!settings::AA_Enabled || !CommonData::dataUpdated) return;
-	if (settings::AA_fovCircle) {
+	if (settings::AA_fovCircle && std::isfinite(CommonData::fov) && CommonData::fov > 1.0f && CommonData::fov < 179.0f &&
+		std::isfinite(settings::AA_fov) && settings::AA_fov > 0.0f && settings::AA_fov < 179.0f) {
 
 		ImVec2 screenSize = ImGui::GetWindowSize();
 		float radAimbotFov = (float)(settings::AA_fov * PI / 180);
 		float radViewFov = (float)(CommonData::fov * PI / 180);
 		float circleRadius = tanf(radAimbotFov / 2.f) / tanf(radViewFov / 2.f) * screenSize.x / 1.7325f;
 
-		ImGui::GetWindowDrawList()->AddCircle(ImVec2(screenSize.x / 2.f, screenSize.y / 2.f), circleRadius, ImColor(settings::AA_fovCircleColor[0], settings::AA_fovCircleColor[1], settings::AA_fovCircleColor[2], settings::AA_fovCircleColor[3]), (int)(circleRadius / 3.f), 1.f);
+		if (std::isfinite(circleRadius) && circleRadius > 0.0f && circleRadius < 10000.0f)
+			ImGui::GetWindowDrawList()->AddCircle(ImVec2(screenSize.x / 2.f, screenSize.y / 2.f), circleRadius, ImColor(settings::AA_fovCircleColor[0], settings::AA_fovCircleColor[1], settings::AA_fovCircleColor[2], settings::AA_fovCircleColor[3]), (std::clamp)(int(circleRadius / 3.f), 12, 256), 1.f);
 	}
 
 	if (settings::AA_aimAssistFeedback) {
@@ -352,3 +355,4 @@ void AimAssist::RenderMenu()
 	ImGui::EndGroup();
 }
 
+warning: in the working copy of 'fusion-plus/src/base/sdk/strayCache.h', LF will be replaced by CRLF the next time Git touches it
