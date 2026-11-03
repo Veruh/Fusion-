@@ -10,11 +10,12 @@ typedef LRESULT(CALLBACK* template_WndProc) (HWND, UINT, WPARAM, LPARAM);
 template_WndProc original_wndProc;
 LRESULT CALLBACK hook_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	if (msg == WM_KEYDOWN)
+	if (msg == WM_KEYDOWN && !(lParam & (1LL << 30)))
 	{
 		if (wParam == Menu::Keybind)
 		{
-			if (Menu::Open) Menu::MoveCursorToCenter(true);
+			// This callback may run on a different thread than the JNI environment.
+			// Do not query Minecraft here.
 			Menu::Open = !Menu::Open;
 		}
 		if (wParam == VK_ESCAPE && Menu::Open)
@@ -47,7 +48,8 @@ LRESULT CALLBACK hook_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		else
 		{
 			ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
-			return true;
+			if ((msg >= WM_KEYFIRST && msg <= WM_KEYLAST) ||
+				(msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST)) return true;
 		}
 	}
 
@@ -65,3 +67,4 @@ void Menu::Unhook_wndProc()
 {
 	SetWindowLongPtr(Menu::HandleWindow, GWLP_WNDPROC, (LONG_PTR)original_wndProc);
 }
+
