@@ -50,7 +50,7 @@ CMinecraft::CMinecraft()
 	// not used lol
 	this->MethodIDs["clickMouse"] = StrayCache::minecraft_clickMouse;
 
-	this->OriginalClientBrand = CClientBrandRetriever::GetClientModName();
+	// Brand substitution is not used by the Studio modules.
 }
 
 jclass CMinecraft::GetClass()
@@ -124,3 +124,4 @@ CGuiChest* CMinecraft::GetGuiChest()
 {
 	return new CGuiChest(Java::Env->GetObjectField(this->GetInstance(), this->FieldIDs["currentScreen"]));
 }
+

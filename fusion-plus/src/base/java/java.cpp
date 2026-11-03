@@ -114,7 +114,8 @@ void Java::Init()
 	Logger::Log("Java initialized");
 
     GetMinecraftVersion();
-	Java::Initialized = Java::Version != MinecraftVersion::UNKNOWN;
+	// Only Lunar 1.8.9 has fail-closed mapping checks in this experimental build.
+	Java::Initialized = Java::Version == MinecraftVersion::LUNAR_1_8_9;
 	Logger::Log("Got Minecraft version");
 }
 

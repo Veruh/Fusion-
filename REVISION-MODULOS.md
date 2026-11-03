@@ -29,5 +29,7 @@ La actualización de módulos, la construcción de la interfaz y el tratamiento 
 
 Al cerrar el menú de la DLL se deshabilitan los hooks, pero la DLL y los trampolines de MinHook permanecen en memoria hasta que termine Minecraft. Esto busca evitar que callbacks pendientes regresen a código descargado. No permite prometer descarga completa ni recarga en la misma sesión, y necesita pruebas en el juego.
 
+La versión experimental limita el arranque a los nombres de Lunar 1.8.9 y detiene la inicialización si alguno de los nombres del caché no se resuelve. Como el caché incluye elementos heredados que podrían no ser necesarios para los módulos, esta verificación conservadora puede rechazar incluso una instalación compatible. La prueba de CI verifica que existan los controles, pero no simula la JVM ni valida los nombres reales de Lunar.
+
 La compilación de revisión no publica el DLL como artefacto. El EXE de vista previa no debe presentarse como si ya controlase el juego.
 

@@ -82,7 +82,15 @@ void Base::Init()
 		break;
 	}
 
-	SDK::Init();
+	if (!SDK::Init()) {
+		MessageBoxA(NULL, "The Minecraft mapping could not be verified. No modules were started.", "Fusion Studio", MB_OK | MB_ICONERROR);
+		StrayCache::DeleteRefs();
+		Java::Kill();
+		MH_Uninitialize();
+		Logger::Kill();
+		FreeLibraryAndExitThread(Main::HModule, 1);
+		return;
+	}
 
 	g_ModuleManager = std::make_unique<ModuleManager>();
 	g_ModuleManager->Init();

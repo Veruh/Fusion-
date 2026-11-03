@@ -19,6 +19,8 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
+      - name: Check Lunar JNI lookup guards
+        run: python .github/tests/check_jni_guards.py
       - name: Compile DLL for review (do not publish)
         run: msbuild fusion-plus\fusion-plus.vcxproj /m /p:Configuration=Release /p:Platform=x64
 
