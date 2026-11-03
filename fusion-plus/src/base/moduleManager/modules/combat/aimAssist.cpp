@@ -54,6 +54,10 @@ void AimAssist::Update()
 	if (Menu::Open) return;
 	if (!CommonData::SanityCheck()) return;
 	if (SDK::Minecraft->IsInGuiState()) return;
+	if (!std::isfinite(settings::AA_smooth) || settings::AA_smooth < 1.0f) {
+		data = Vector3();
+		return;
+	}
 
 	// Checks
 	if (settings::AA_sprintCheck && !SDK::Minecraft->thePlayer->IsSprinting()) {

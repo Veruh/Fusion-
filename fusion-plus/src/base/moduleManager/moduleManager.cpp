@@ -29,6 +29,10 @@ void ModuleManager::Init()
 		ConfigManager::LoadConfig(configList[0].c_str());
 		Logger::Log("Config loaded: %s", configList[0].c_str());
 	}
+	// Start in a passive state even when a previous profile enabled modules.
+	settings::AA_Enabled = false;
+	settings::ESP_Enabled = false;
+	settings::Velocity_Enabled = false;
 }
 
 void ModuleManager::UpdateModules()
@@ -78,3 +82,4 @@ std::vector<std::string> ModuleManager::GetCategories()
 
 	return categories;
 }
+

@@ -290,7 +290,7 @@ inline void ModuleCard(int index,ImVec2 size) {
     ImGui::EndChild();
     ImGui::PopStyleVar();ImGui::PopStyleColor(2);ImGui::PopStyleVar();ImGui::PopID();
 }
-inline void Dashboard() {
+inline void Dashboard(bool standalone) {
     const char* filters[]={"Todos","Favoritos","Combate","Renderizado","Movimiento"};
     float activeLeft=0,activeRight=0;const float underlineY=ImGui::GetCursorScreenPos().y+32;
     for(int i=0;i<5;i++) {
@@ -332,7 +332,7 @@ inline void Dashboard() {
         ImGui::Spacing();ImGui::TextDisabled("No hay modulos para este filtro.");
         if(ModuleFilter==1) ImGui::TextWrapped("Marca un modulo como favorito desde Todos.");
     }
-    ImGui::Spacing();ImGui::TextDisabled("Vista previa local. Controles de demostracion.");
+    ImGui::Spacing();ImGui::TextDisabled("%s",standalone?"Vista previa local. Controles de demostracion.":"Modulos experimentales para la sesion actual.");
 }
 inline void Startup(float completed,const char* status,float alpha=1) {
     Theme();auto* d=ImGui::GetBackgroundDrawList();const auto display=ImGui::GetIO().DisplaySize;
@@ -465,7 +465,7 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha,ImGui::GetStyle().Alpha*(.40f+.60f*scene));
     ImGui::SetCursorPosY(158+(ReducedMotion?0:5*(1-scene)));
     ImGui::BeginChild("##settingsPanel",ImVec2(mainWidth,height-178-(ReducedMotion?0:5*(1-scene))),true,page==5?ImGuiWindowFlags_NoScrollbar:0);
-    switch(page) {case 0:Aim();break;case 1:Visuals();break;case 2:Velocity();break;case 3:profiles();break;case 4:preferences();break;case 5:Dashboard();break;}
+    switch(page) {case 0:Aim();break;case 1:Visuals();break;case 2:Velocity();break;case 3:profiles();break;case 4:preferences();break;case 5:Dashboard(standalone);break;}
     ImGui::EndChild();
     ImGui::PopStyleVar();
     if(rail) {
@@ -486,3 +486,4 @@ inline void Render(void (*profiles)(),void (*preferences)(),bool* open,bool* run
     ImGui::End();ImGui::PopStyleVar();
 }
 }
+
