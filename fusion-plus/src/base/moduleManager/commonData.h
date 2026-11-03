@@ -79,7 +79,8 @@ struct CommonData
 
 	// Return false if sanity check failed
 	static bool SanityCheck() {
-		if (!SDK::Minecraft->thePlayer->GetInstance() || !SDK::Minecraft->theWorld->GetInstance())
+		if (!SDK::Minecraft || !SDK::Minecraft->thePlayer || !SDK::Minecraft->theWorld ||
+			!SDK::Minecraft->thePlayer->GetInstance() || !SDK::Minecraft->theWorld->GetInstance())
 		{
 			CommonData::dataUpdated = false;
 			return false;
@@ -87,3 +88,4 @@ struct CommonData
 		return true;
 	}
 };
+

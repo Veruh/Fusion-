@@ -11,6 +11,7 @@ public:
 	void Init();
 
 	void UpdateModules();
+	void Stop();
 	void RenderUpdate();
 
 	void RenderMenu(int index);
@@ -22,3 +23,4 @@ private:
 };
 
 inline std::unique_ptr<ModuleManager> g_ModuleManager;
+

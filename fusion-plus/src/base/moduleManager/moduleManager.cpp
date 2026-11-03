@@ -41,9 +41,15 @@ void ModuleManager::UpdateModules()
 
 	for (auto& module : modules)
 	{
-		if (module->IsEnabled())
-			module->Update();
+		// Velocity must observe disable/focus changes to release any held key.
+		module->Update();
 	}
+}
+
+void ModuleManager::Stop()
+{
+	for (auto& module : modules)
+		if (auto* velocity = dynamic_cast<Velocity*>(module.get())) velocity->Stop();
 }
 
 void ModuleManager::RenderUpdate()

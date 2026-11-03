@@ -102,6 +102,7 @@ void Base::Init()
 
 void Base::Kill()
 {
+	if (g_ModuleManager) g_ModuleManager->Stop();
 	if (Borderless::Enabled)
 		Borderless::Restore(Menu::HandleWindow);
 
