@@ -34,5 +34,5 @@ La versión experimental limita el arranque a los nombres de Lunar 1.8.9 y detie
 
 Cada actualización crea un marco de referencias locales JNI y lo libera al terminar, después de vaciar la lista temporal de jugadores. Si detecta una excepción al terminar la lectura o entre módulos, desactiva el ciclo. Hay código heredado que realiza varias llamadas JNI antes de volver al ciclo, por lo que todavía se debe auditar la propagación de errores dentro de cada llamada.
 
-La compilación de revisión no publica el DLL como artefacto. El EXE de vista previa no debe presentarse como si ya controlase el juego.
+La compilación publica un DLL de revisión marcado explícitamente como experimental para poder comparar su hash y examinarlo sin ejecutarlo. No está listo para pruebas de inyección solo por haber compilado. El EXE de vista previa no debe presentarse como si ya controlase el juego.
 

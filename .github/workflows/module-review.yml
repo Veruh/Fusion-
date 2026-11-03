@@ -28,6 +28,15 @@ jobs:
           if errorlevel 1 exit /b %errorlevel%
           string_lifetime.exe
           if errorlevel 1 exit /b %errorlevel%
-      - name: Compile DLL for review (do not publish)
+      - name: Compile experimental DLL for offline review
         run: msbuild fusion-plus\fusion-plus.vcxproj /m /p:Configuration=Release /p:Platform=x64
+      - name: Record candidate SHA-256
+        shell: pwsh
+        run: Get-FileHash -LiteralPath fusion-plus/build/fusion-plus.dll -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: experimental-review-do-not-inject
+          path: fusion-plus/build/fusion-plus.dll
+          if-no-files-found: error
+          retention-days: 3
 
