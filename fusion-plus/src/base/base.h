@@ -1,4 +1,5 @@
 #pragma once
+#include <mutex>
 
 struct Base
 {
@@ -9,5 +10,8 @@ struct Base
 	static void RenderLoop();
 
 	static inline bool Running;
+	// Guards shared settings, module snapshots, ImGui state and window state.
+	static inline std::recursive_mutex StateMutex;
 };
+
 

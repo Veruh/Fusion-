@@ -9,7 +9,9 @@ void Main::Init()
 void Main::Kill()
 {
 	Base::Kill();
-	FreeLibraryAndExitThread(Main::HModule, 0);
+	// Keep the DLL and hook trampolines resident until the JVM exits: callbacks
+	// already in flight can still return through them after hooks are disabled.
+	ExitThread(0);
 }
 
 BOOL WINAPI DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved)
@@ -26,3 +28,4 @@ BOOL WINAPI DllMain(HINSTANCE hModule, DWORD dwReason, LPVOID lpReserved)
 
 	return TRUE;
 }
+

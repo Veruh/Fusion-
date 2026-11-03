@@ -372,9 +372,15 @@ void Menu::Kill()
 {
 	Menu::Open = false;
 	Menu::RemoveHooks();
-	wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
-	wglDeleteContext(Menu::MenuGLContext);
-	ImGui::DestroyContext();
+	if (Menu::Initialized) {
+		wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext);
+		ImGui_ImplOpenGL2_Shutdown();
+		ImGui_ImplWin32_Shutdown();
+		ImGui::DestroyContext();
+		wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
+		wglDeleteContext(Menu::MenuGLContext);
+		Menu::Initialized = false;
+	}
 }
 
 void Menu::PlaceHooks()
@@ -385,6 +391,7 @@ void Menu::PlaceHooks()
 
 void Menu::RemoveHooks()
 {
-	Menu::Unhook_wndProc();
+	if (Menu::Initialized) Menu::Unhook_wndProc();
 	Menu::Unhook_wglSwapBuffers();
 }
+

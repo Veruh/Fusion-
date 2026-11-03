@@ -84,16 +84,19 @@ void Base::Init()
 
 	SDK::Init();
 
-	Menu::Init();
-
 	g_ModuleManager = std::make_unique<ModuleManager>();
 	g_ModuleManager->Init();
 
 	Base::Running = true;
+	Menu::Init();
 
-	while (Base::Running)
+	while (true)
 	{
-		g_ModuleManager->UpdateModules();
+		{
+			std::lock_guard<std::recursive_mutex> lock(Base::StateMutex);
+			if (!Base::Running) break;
+			g_ModuleManager->UpdateModules();
+		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	}
 
@@ -111,6 +114,6 @@ void Base::Kill()
 	Menu::Kill();
 	Logger::Kill();
 
-	MH_Uninitialize();
+	// MinHook's disabled trampolines remain resident until process exit.
 }
 

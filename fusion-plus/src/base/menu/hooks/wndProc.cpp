@@ -3,6 +3,7 @@
 #include "imgui/imgui_impl_win32.h"
 
 #include "configManager/settings.h"
+#include "base.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -10,6 +11,11 @@ typedef LRESULT(CALLBACK* template_WndProc) (HWND, UINT, WPARAM, LPARAM);
 template_WndProc original_wndProc;
 LRESULT CALLBACK hook_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	std::unique_lock<std::recursive_mutex> stateLock(Base::StateMutex);
+	if (!Base::Running) {
+		stateLock.unlock();
+		return CallWindowProc(original_wndProc, hwnd, msg, wParam, lParam);
+	}
 	if (msg == WM_KEYDOWN && !(lParam & (1LL << 30)))
 	{
 		if (wParam == Menu::Keybind)
@@ -53,6 +59,7 @@ LRESULT CALLBACK hook_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 	}
 
+	stateLock.unlock();
 	return CallWindowProc(original_wndProc, hwnd, msg, wParam, lParam);
 }
 

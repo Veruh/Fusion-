@@ -22,6 +22,11 @@ typedef bool(__stdcall* template_wglSwapBuffers) (HDC hdc);
 template_wglSwapBuffers original_wglSwapBuffers;
 bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 {
+	std::unique_lock<std::recursive_mutex> stateLock(Base::StateMutex);
+	if (!Base::Running) {
+		stateLock.unlock();
+		return original_wglSwapBuffers(hdc);
+	}
 	// handling fullscreen context switching before we set the new hwnd, so we can compare them
 	
 	// if the cached hwnd isnt equal to the current one
@@ -50,6 +55,7 @@ bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 		wglMakeCurrent(hdc, Menu::OriginalGLContext);
 
 		// end detour
+		stateLock.unlock();
 		return original_wglSwapBuffers(hdc);
 	}
 
@@ -110,6 +116,7 @@ bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
 	wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
+	stateLock.unlock();
 	return original_wglSwapBuffers(hdc);
 }
 
@@ -123,7 +130,6 @@ void Menu::Hook_wglSwapBuffers()
 void Menu::Unhook_wglSwapBuffers()
 {	
 	MH_DisableHook(MH_ALL_HOOKS);
-	MH_RemoveHook(MH_ALL_HOOKS);
 }
 
 void Menu::SetupImgui()
@@ -218,3 +224,4 @@ void Menu::SetupImgui()
 
 	Menu::Initialized = true;
 }
+

@@ -23,5 +23,11 @@ La aplicación `standalone` es una vista previa independiente; sus controles no 
 4. Probar en un entorno aislado, con cambios de foco, cierre del juego, entrada a menús, carga de perfiles y apagado con cada módulo activo. `SendInput` afecta a la entrada del sistema: comprobar que no quedan teclas pulsadas ni se envían eventos inesperados a otras ventanas.
 5. Revisar código y dependencias y analizar el binario exacto. Un workflow exitoso solo demuestra que compiló y pasó sus pruebas configuradas; no certifica que esté libre de malware.
 
+## Cambios experimentales de sincronización
+
+La actualización de módulos, la construcción de la interfaz y el tratamiento de mensajes comparten un mutex recursivo. Las llamadas originales de Windows/OpenGL se hacen fuera de la sección protegida. Esto requiere pruebas reales de bloqueos y fluidez: no demuestra por sí solo que todos los accesos o ciclos de mensajes estén cubiertos.
+
+Al cerrar el menú de la DLL se deshabilitan los hooks, pero la DLL y los trampolines de MinHook permanecen en memoria hasta que termine Minecraft. Esto busca evitar que callbacks pendientes regresen a código descargado. No permite prometer descarga completa ni recarga en la misma sesión, y necesita pruebas en el juego.
+
 La compilación de revisión no publica el DLL como artefacto. El EXE de vista previa no debe presentarse como si ya controlase el juego.
 
