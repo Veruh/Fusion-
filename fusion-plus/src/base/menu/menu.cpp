@@ -372,13 +372,16 @@ void Menu::Kill()
 {
 	Menu::Open = false;
 	Menu::RemoveHooks();
+	Menu::RestoreCursorClip();
 	if (Menu::Initialized) {
-		wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext);
-		ImGui_ImplOpenGL2_Shutdown();
+		const bool contextReady = wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext) == TRUE;
+		if (contextReady) ImGui_ImplOpenGL2_Shutdown();
 		ImGui_ImplWin32_Shutdown();
 		ImGui::DestroyContext();
-		wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
-		wglDeleteContext(Menu::MenuGLContext);
+		if (contextReady) {
+			wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
+			wglDeleteContext(Menu::MenuGLContext);
+		}
 		Menu::Initialized = false;
 	}
 }

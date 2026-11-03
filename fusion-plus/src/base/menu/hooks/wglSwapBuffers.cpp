@@ -18,6 +18,14 @@ std::once_flag setupFlag;
 std::atomic_flag clipCursor = ATOMIC_FLAG_INIT;
 RECT originalClip;
 
+void Menu::RestoreCursorClip()
+{
+	if (clipCursor.test() && GetForegroundWindow() == Menu::HandleWindow &&
+		originalClip.right > originalClip.left && originalClip.bottom > originalClip.top)
+		ClipCursor(&originalClip);
+	clipCursor.clear();
+}
+
 typedef bool(__stdcall* template_wglSwapBuffers) (HDC hdc);
 template_wglSwapBuffers original_wglSwapBuffers;
 bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
@@ -78,17 +86,19 @@ bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 
 	if (Menu::Open)
 	{
-		if (clipCursor.test_and_set()) GetClipCursor(&originalClip);
-
-		ClipCursor(NULL);
+		if (GetForegroundWindow() == Menu::HandleWindow) {
+			if (!clipCursor.test_and_set()) GetClipCursor(&originalClip);
+			ClipCursor(NULL);
+		} else clipCursor.clear();
 		Menu::RenderMenu();
 	}
 	else
 	{
 		// checking if originalClip is valid
-		if (originalClip.right > originalClip.left && originalClip.bottom > originalClip.top)
+		if (clipCursor.test())
 		{
-			ClipCursor(&originalClip);
+			if (GetForegroundWindow() == Menu::HandleWindow && originalClip.right > originalClip.left && originalClip.bottom > originalClip.top)
+				ClipCursor(&originalClip);
 			clipCursor.clear();
 		}
 	}
