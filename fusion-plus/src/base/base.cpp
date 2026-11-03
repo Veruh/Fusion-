@@ -33,7 +33,12 @@ void Base::Init()
 	Logger::Init();
 #endif
 
-	MH_Initialize();
+	if (MH_Initialize() != MH_OK) {
+		MessageBoxA(NULL, "Could not initialize the overlay. No modules were started.", "Fusion Studio", MB_OK | MB_ICONERROR);
+		Logger::Kill();
+		FreeLibraryAndExitThread(Main::HModule, 1);
+		return;
+	}
 
 	Java::Init();
 	if (!Java::Initialized) {

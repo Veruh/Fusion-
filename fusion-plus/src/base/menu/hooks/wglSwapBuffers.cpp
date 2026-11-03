@@ -35,6 +35,10 @@ bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 		stateLock.unlock();
 		return original_wglSwapBuffers(hdc);
 	}
+	if (!hdc || !WindowFromDC(hdc)) {
+		stateLock.unlock();
+		return original_wglSwapBuffers(hdc);
+	}
 	// handling fullscreen context switching before we set the new hwnd, so we can compare them
 	
 	// if the cached hwnd isnt equal to the current one
@@ -61,7 +65,12 @@ bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 		return original_wglSwapBuffers(hdc);
 	}
 
-	wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext);
+	if (!wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext)) {
+		Base::Running = false;
+		wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
+		stateLock.unlock();
+		return original_wglSwapBuffers(hdc);
+	}
 
 	ImGui_ImplOpenGL2_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -117,9 +126,11 @@ bool __stdcall hook_wglSwapBuffers(_In_ HDC hdc)
 
 void Menu::Hook_wglSwapBuffers()
 {
-	LPVOID wglSwapBuffers = (LPVOID)GetProcAddress(GetModuleHandle("opengl32.dll"), "wglSwapBuffers");
-	MH_CreateHook(wglSwapBuffers, (LPVOID)hook_wglSwapBuffers, (LPVOID*)&original_wglSwapBuffers);
-	MH_EnableHook(wglSwapBuffers);
+	const HMODULE opengl = GetModuleHandle("opengl32.dll");
+	LPVOID wglSwapBuffers = opengl ? (LPVOID)GetProcAddress(opengl, "wglSwapBuffers") : nullptr;
+	if (!wglSwapBuffers || MH_CreateHook(wglSwapBuffers, (LPVOID)hook_wglSwapBuffers, (LPVOID*)&original_wglSwapBuffers) != MH_OK ||
+		!original_wglSwapBuffers || MH_EnableHook(wglSwapBuffers) != MH_OK)
+		Base::Running = false;
 }
 
 void Menu::Unhook_wglSwapBuffers()
@@ -130,7 +141,13 @@ void Menu::Unhook_wglSwapBuffers()
 void Menu::SetupImgui()
 {
 	Menu::MenuGLContext = wglCreateContext(Menu::HandleDeviceContext);
-	wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext);
+	if (!Menu::MenuGLContext || !wglMakeCurrent(Menu::HandleDeviceContext, Menu::MenuGLContext)) {
+		if (Menu::MenuGLContext) wglDeleteContext(Menu::MenuGLContext);
+		Menu::MenuGLContext = nullptr;
+		wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
+		Base::Running = false;
+		return;
+	}
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -213,9 +230,17 @@ void Menu::SetupImgui()
 	style.WindowBorderSize = 0;
 	style.WindowPadding = ImVec2(0,0);
 
-	ImGui_ImplWin32_Init(Menu::HandleWindow);
-	ImGui_ImplOpenGL2_Init();
-
+	const bool win32Ready = ImGui_ImplWin32_Init(Menu::HandleWindow);
+	const bool rendererReady = win32Ready && ImGui_ImplOpenGL2_Init();
+	if (!rendererReady) {
+		if (win32Ready) ImGui_ImplWin32_Shutdown();
+		ImGui::DestroyContext();
+		wglMakeCurrent(Menu::HandleDeviceContext, Menu::OriginalGLContext);
+		wglDeleteContext(Menu::MenuGLContext);
+		Menu::MenuGLContext = nullptr;
+		Base::Running = false;
+		return;
+	}
 
 	Menu::Initialized = true;
 }

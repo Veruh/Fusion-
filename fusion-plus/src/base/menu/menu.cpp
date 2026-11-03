@@ -396,7 +396,7 @@ void Menu::PlaceHooks()
 
 void Menu::RemoveHooks()
 {
-	if (Menu::Initialized) Menu::Unhook_wndProc();
+	Menu::Unhook_wndProc();
 	Menu::Unhook_wglSwapBuffers();
 }
 
