@@ -9,6 +9,7 @@
 #include "java/java.h"
 
 #include <chrono>
+#include <cmath>
 #include <random>
 #include <configManager/configManager.h>
 #include <util/minecraft.h>
@@ -68,7 +69,7 @@ void AimAssist::Update()
 		return;
 	}
 
-	if ((settings::AA_mousePressCheck && (!GetAsyncKeyState(VK_LBUTTON) && 1))) {
+	if (settings::AA_mousePressCheck && !(GetAsyncKeyState(VK_LBUTTON) & 0x8000)) {
 		AimAssist::data = Vector3();
 		return;
 	}
@@ -111,7 +112,7 @@ void AimAssist::Update()
 			if (player.obj.IsInvisibleToPlayer(thePlayer->GetInstance()) && settings::AA_invisibleCheck) continue;
 
 			Vector3 playerPos = player.pos;
-			float playerHeight = target.height - 0.1f;
+			float playerHeight = player.height - 0.1f;
 			Vector3 playerHeadPos = playerPos + Vector3(0, playerHeight, 0);
 
 			Vector2 anglesFoot = Math::getAngles(headPos, playerPos);
@@ -242,13 +243,13 @@ void AimAssist::RenderUpdate()
 	}
 
 	if (settings::AA_aimAssistFeedback) {
-		if (data.x == NAN) return;
+		if (!std::isfinite(data.x) || !std::isfinite(data.y) || !std::isfinite(data.z)) return;
 		ImVec2 screenSize = ImGui::GetWindowSize();
 
 		Vector2 w2s;
 		if (CWorldToScreen::WorldToScreen(data, CommonData::modelView, CommonData::projection, screenSize.x, screenSize.y, w2s))
 		{
-			if (w2s.x == NAN) return;
+			if (!std::isfinite(w2s.x) || !std::isfinite(w2s.y)) return;
 
 			if (pitchInfluenced)
 			{
@@ -346,3 +347,4 @@ void AimAssist::RenderMenu()
 
 	ImGui::EndGroup();
 }
+

@@ -36,6 +36,15 @@ void Base::Init()
 	MH_Initialize();
 
 	Java::Init();
+	if (!Java::Initialized) {
+		Logger::Log("Minecraft Java initialization failed");
+		MessageBoxA(NULL, "Could not safely initialize Minecraft. No modules were started.", "Fusion Studio", MB_OK | MB_ICONERROR);
+		Java::Kill();
+		MH_Uninitialize();
+		Logger::Kill();
+		FreeLibraryAndExitThread(Main::HModule, 1);
+		return;
+	}
 	switch (Java::Version)
 	{
 	case MinecraftVersion::LUNAR_1_8_9:
@@ -103,3 +112,4 @@ void Base::Kill()
 
 	MH_Uninitialize();
 }
+

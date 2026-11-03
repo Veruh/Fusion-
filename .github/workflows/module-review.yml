@@ -1,0 +1,24 @@
+name: Build module review
+on:
+  pull_request:
+    paths:
+      - 'fusion-plus/**'
+      - '.github/workflows/module-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: microsoft/setup-msbuild@v2
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Compile DLL for review (do not publish)
+        run: msbuild fusion-plus\fusion-plus.vcxproj /m /p:Configuration=Release /p:Platform=x64
+

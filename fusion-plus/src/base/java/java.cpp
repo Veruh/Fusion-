@@ -6,8 +6,9 @@
 JavaVM* vm;
 jobject classLoader;
 jmethodID mid_findClass;
+static bool attachedByFusion = false;
 
-void setupClassLoader()
+bool setupClassLoader()
 {
     jclass c_Thread = Java::Env->FindClass("java/lang/Thread");
     jclass c_Map = Java::Env->FindClass("java/util/Map");
@@ -37,14 +38,20 @@ void setupClassLoader()
             jstring className = Java::Env->NewStringUTF("net.minecraft.client.Minecraft");
             jobject minecraftClass = Java::Env->CallObjectMethod(classLoaderObj, mid_findClass, className);
 
+            if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
             if (minecraftClass)
             {
-                classLoader = classLoaderObj;
+                classLoader = Java::Env->NewGlobalRef(classLoaderObj);
 
                 Java::Env->DeleteLocalRef(minecraftClass);
+                Java::Env->DeleteLocalRef(classLoaderObj);
+                Java::Env->DeleteLocalRef(className);
+                Java::Env->DeleteLocalRef(thread);
 
                 break;
             }
+            Java::Env->DeleteLocalRef(className);
+            Java::Env->DeleteLocalRef(classLoaderObj);
         }
 
         Java::Env->DeleteLocalRef(thread);
@@ -58,12 +65,13 @@ void setupClassLoader()
     Java::Env->DeleteLocalRef(c_Set);
     Java::Env->DeleteLocalRef(c_ClassLoader);
 
-    Java::Initialized = true;
+    return classLoader != nullptr;
 }
 
 void Java::Init()
 {
     Java::Initialized = false;
+    Java::Version = MinecraftVersion::UNKNOWN;
 
     // Check if there is any Java VMs in the injected thread
     jsize count;
@@ -73,27 +81,36 @@ void Java::Init()
     jint res = vm->GetEnv((void**)&Java::Env, JNI_VERSION_1_6);
     Logger::Log("Got Java ENV");
 
-    if (res == JNI_EDETACHED)
+    if (res == JNI_EDETACHED) {
         res = vm->AttachCurrentThread((void**)&Java::Env, nullptr);
+		attachedByFusion = res == JNI_OK;
+	}
 	Logger::Log("Attached to Java VM");
 
     if (res != JNI_OK)
         return;
 
     if (Java::Env == nullptr)
-        vm->DestroyJavaVM();
+        return;
 
-    vm->GetEnv((void**)&Java::tiEnv, JVMTI_VERSION);
-    setupClassLoader();
+    if (vm->GetEnv((void**)&Java::tiEnv, JVMTI_VERSION) != JNI_OK || !Java::tiEnv)
+        return;
+    if (!setupClassLoader()) return;
 	Logger::Log("Java initialized");
 
     GetMinecraftVersion();
+	Java::Initialized = Java::Version != MinecraftVersion::UNKNOWN;
 	Logger::Log("Got Minecraft version");
 }
 
 void Java::Kill()
 {
-    vm->DetachCurrentThread();
+    if (Java::Env && classLoader) Java::Env->DeleteGlobalRef(classLoader);
+    classLoader = nullptr;
+    if (vm && attachedByFusion) vm->DetachCurrentThread();
+    attachedByFusion = false;
+    Java::Env = nullptr;
+    Java::Initialized = false;
 }
 
 bool Java::AssignClass(std::string name, jclass &out)
@@ -312,3 +329,4 @@ void Java::GetMinecraftVersion()
 	if (CheckForge1710()) return;
 
 }
+
