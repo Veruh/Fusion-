@@ -2,6 +2,7 @@
 #include <util/logger.h>
 
 #include "sdk/java/lang/String.h"
+#include <algorithm>
 
 JavaVM* vm;
 jobject classLoader;
@@ -129,32 +130,31 @@ void Java::Kill()
 
 bool Java::AssignClass(std::string name, jclass &out)
 {
-    jstring className = Java::Env->NewStringUTF(name.c_str());
-    jobject findClass = Java::Env->CallObjectMethod(classLoader, mid_findClass, className);
-
-    if (findClass)
-    {
-        out = (jclass)findClass;
-        return true;
-    }
-
-	out = Java::Env->FindClass(name.c_str());
-	if (out) return true;
-        
-    return false;
+    out = GetClass(name);
+    return out != nullptr;
 }
 
 jclass Java::GetClass(std::string name)
 {
+    if (!Java::Env || !classLoader || !mid_findClass || name.empty()) return nullptr;
     jstring className = Java::Env->NewStringUTF(name.c_str());
+    if (!className || Java::Env->ExceptionCheck()) {
+        if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
+        return nullptr;
+    }
     jobject findClass = Java::Env->CallObjectMethod(classLoader, mid_findClass, className);
+    Java::Env->DeleteLocalRef(className);
+    if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
 
 	if (findClass)
 	{
 		return (jclass)findClass;
 	}
 
-	return Java::Env->FindClass(name.c_str());
+    std::replace(name.begin(), name.end(), '.', '/');
+	jclass result = Java::Env->FindClass(name.c_str());
+    if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
+	return result;
 }
 
 jclass Java::findClass(JNIEnv* p_env, jvmtiEnv* p_tienv, const std::string& path)
@@ -332,8 +332,11 @@ static bool CheckForge1710()
 void Java::GetMinecraftVersion()
 {
     if (CheckLunarClient()) return;
+    if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
     if (CheckVanilla189()) return;
+	if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
 	if (CheckForge189()) return;
+	if (Java::Env->ExceptionCheck()) Java::Env->ExceptionClear();
 
 	Java::Version = MinecraftVersion::UNKNOWN;
     return;

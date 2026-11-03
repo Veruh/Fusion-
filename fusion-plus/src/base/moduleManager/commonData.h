@@ -31,8 +31,6 @@ struct CommonData
 		float health = FLT_MAX;
 		float maxHealth = FLT_MAX;
 
-		// Tag-Back head item
-		CItem headItem;
 	};
 
 	inline static std::vector<PlayerData> nativePlayerList;
@@ -66,8 +64,7 @@ struct CommonData
 					player.GetHeight(),
 					player.GetWidth(),
 					player.GetHealth(),
-					player.GetMaxHealth(),
-					player.GetInventory().GetArmorInventory()[3].GetItem()
+					player.GetMaxHealth()
 				});
 		}
 		nativePlayerList = newData;
